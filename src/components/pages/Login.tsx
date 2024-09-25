@@ -32,6 +32,10 @@ export default function LoginPage() {
     signOut();
   }, []);
 
+  const goToForgot = () => {
+    navigate("/forgot-password");
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -137,7 +141,11 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-2">
-          <Button variant="link" className="text-sm text-muted-foreground">
+          <Button
+            variant="link"
+            className="text-sm text-muted-foreground"
+            onClick={goToForgot}
+          >
             Esqueceu sua senha?
           </Button>
           <div className="text-sm text-center text-muted-foreground">

@@ -1,7 +1,14 @@
-"use client";
-
 import { useState } from "react";
-import { User, Mail, Calendar, Lock, CreditCard, Save } from "lucide-react";
+import {
+  User,
+  Mail,
+  Calendar,
+  Lock,
+  CreditCard,
+  Save,
+  Phone,
+  Building,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,13 +23,21 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate } from "react-router-dom";
+import { AuthService } from "@/services/AuthService";
+import useAuth from "@/security/UseAuth";
+import { UserService } from "@/services/UserService";
 
 export default function ProfileEditPage() {
+  const { user } = useAuth();
+
   const [formData, setFormData] = useState({
-    fullName: "João Silva",
-    email: "joao.silva@example.com",
-    cpf: "123.456.789-00",
-    birthDate: "01/01/1990",
+    name: user?.name || "",
+    email: user?.email || "",
+    cpf: user?.cpf || "",
+    cnpj: user?.cnpj || "",
+    phone: user?.phone || "",
+    rg: user?.rg || "",
+    birthdate: user?.birthdate || "",
     currentPassword: "",
     newPassword: "",
     confirmNewPassword: "",
@@ -35,10 +50,65 @@ export default function ProfileEditPage() {
   const goToHome = () => {
     navigate("/home");
   };
+  const { token, updateDataToken } = useAuth();
+
+  const formatCPF = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+      .replace(/(-\d{2})\d+?$/, "$1");
+  };
+
+  const formatCNPJ = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{2})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1.$2")
+      .replace(/(\d{3})(\d)/, "$1/$2")
+      .replace(/(\d{4})(\d)/, "$1-$2")
+      .replace(/(-\d{2})\d+?$/, "$1");
+  };
+
+  const formatPhone = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{2})(\d)/, "($1) $2")
+      .replace(/(\d{5})(\d)/, "$1-$2")
+      .replace(/(-\d{4})\d+?$/, "$1");
+  };
+
+  const formatBirthdate = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{2})(\d)/, "$1/$2")
+      .replace(/(\d{2})(\d)/, "$1/$2")
+      .replace(/(\/\d{4})\d+?$/, "$1");
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    let formattedValue = value;
+
+    switch (name) {
+      case "cpf":
+        formattedValue = formatCPF(value);
+        break;
+      case "cnpj":
+        formattedValue = formatCNPJ(value);
+        break;
+      case "phone":
+        formattedValue = formatPhone(value);
+        break;
+      case "birthdate":
+        formattedValue = formatBirthdate(value);
+        break;
+      default:
+        break;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: formattedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,15 +117,29 @@ export default function ProfileEditPage() {
     setSuccess("");
     setIsLoading(true);
 
-    // Simulating an API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const userData = {
+        name: formData.name || null,
+        email: formData.email || null,
+        cpf: formData.cpf || null,
+        cnpj: formData.cnpj || null,
+        phone: formData.phone || null,
+        rg: formData.rg || null,
+        birthdate: formData.birthdate || null,
+      };
 
-      // Add your actual update logic here
-      console.log("Profile updated:", formData);
+      if (!token) {
+        navigate("/login");
+        throw new Error("Token não encontrado.");
+      }
+
+      await UserService.updateInfo(token, userData);
+      const newToken = await AuthService.updateDataToken(token);
+      updateDataToken(newToken);
+
       setSuccess("Perfil atualizado com sucesso!");
     } catch (err) {
-      console.log(err);
+      console.error(err);
       setError(
         "Ocorreu um erro ao atualizar o perfil. Por favor, tente novamente."
       );
@@ -70,16 +154,20 @@ export default function ProfileEditPage() {
     setSuccess("");
     setIsLoading(true);
 
-    // Simulating an API call
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
       if (formData.newPassword !== formData.confirmNewPassword) {
         throw new Error("As novas senhas não coincidem.");
       }
 
-      // Add your actual password update logic here
-      console.log("Password updated");
+      if (!token) {
+        navigate("/login");
+        throw new Error("Token não encontrado.");
+      }
+      await AuthService.changePassword(
+        token,
+        formData.currentPassword,
+        formData.newPassword
+      );
       setSuccess("Senha atualizada com sucesso!");
       setFormData((prev) => ({
         ...prev,
@@ -88,9 +176,9 @@ export default function ProfileEditPage() {
         confirmNewPassword: "",
       }));
     } catch (err) {
-      console.log(err);
+      console.error(err);
       setError(
-        "Ocorreu um erro ao atualizar a senha. Por favor, tente novamente."
+        "Senha atual incorreta ou ocorreu um erro ao atualizar a senha. Por favor, tente novamente."
       );
     } finally {
       setIsLoading(false);
@@ -115,13 +203,13 @@ export default function ProfileEditPage() {
             <TabsContent value="personal">
               <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Nome Completo</Label>
+                  <Label htmlFor="name">Nome Completo</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <Input
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
+                      id="name"
+                      name="name"
+                      value={formData.name}
                       onChange={handleChange}
                       className="pl-10"
                       required
@@ -154,20 +242,66 @@ export default function ProfileEditPage() {
                       onChange={handleChange}
                       className="pl-10"
                       required
+                      maxLength={14}
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="birthDate">Data de Nascimento</Label>
+                  <Label htmlFor="cnpj">CNPJ</Label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <Input
-                      id="birthDate"
-                      name="birthDate"
-                      value={formData.birthDate}
+                      id="cnpj"
+                      name="cnpj"
+                      value={formData.cnpj}
+                      onChange={handleChange}
+                      className="pl-10"
+                      maxLength={18}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Telefone</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
                       onChange={handleChange}
                       className="pl-10"
                       required
+                      maxLength={15}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rg">RG</Label>
+                  <div className="relative">
+                    <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="rg"
+                      name="rg"
+                      value={formData.rg}
+                      onChange={handleChange}
+                      className="pl-10"
+                      required
+                      maxLength={9}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="birthdate">Data de Nascimento</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="birthdate"
+                      name="birthdate"
+                      value={formData.birthdate}
+                      onChange={handleChange}
+                      className="pl-10"
+                      required
+                      maxLength={10}
                     />
                   </div>
                 </div>
@@ -262,7 +396,7 @@ export default function ProfileEditPage() {
           <Button variant="outline" onClick={goToHome}>
             Cancelar
           </Button>
-          <Button>
+          <Button onClick={handleSubmit}>
             <Save className="w-4 h-4 mr-2" />
             Salvar Alterações
           </Button>

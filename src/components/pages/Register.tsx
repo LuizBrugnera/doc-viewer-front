@@ -107,7 +107,7 @@ export default function RegisterPage() {
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         cpf: formData.cpf,
-        birthDate: formData.birthDate,
+        birthdate: formData.birthDate,
       });
       toast.success("Registro realizado com sucesso!");
       const token = await AuthService.login({

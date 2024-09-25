@@ -55,10 +55,19 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const signIn = (token: string) => {
     const userData = jwtDecode<User>(token);
-
     setUser(userData);
     setToken(token);
-    setIsAuthenticated(true); // Atualiza o estado de autenticação
+    setIsAuthenticated(true);
+
+    localStorage.setItem("@AppName:token", token);
+    localStorage.setItem("@AppName:user", JSON.stringify(userData));
+  };
+
+  const updateDataToken = (token: string) => {
+    const userData = jwtDecode<User>(token);
+    setUser(userData);
+    setToken(token);
+    setIsAuthenticated(true);
 
     localStorage.setItem("@AppName:token", token);
     localStorage.setItem("@AppName:user", JSON.stringify(userData));
@@ -79,7 +88,7 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, signIn, signOut, isAuthenticated, isLoading }}
+      value={{ user, token, signIn, signOut, isAuthenticated, isLoading, updateDataToken }}
     >
       {children}
     </AuthContext.Provider>
