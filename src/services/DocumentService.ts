@@ -1,4 +1,4 @@
-import { Document, DocumentMetaData } from "@/types/GlobalTypes";
+import { Category, Document, DocumentMetaData } from "@/types/GlobalTypes";
 import axios, { AxiosResponse } from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL + "/api/v1/document";
@@ -11,6 +11,20 @@ export const DocumentService = {
   ): Promise<DocumentMetaData> {
     return (
       await axios.post(`${API_URL}/upload-file/${userId}`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      })
+    ).data as DocumentMetaData;
+  },
+
+  async uploadFileFast(
+    token: string,
+    formData: FormData
+  ): Promise<DocumentMetaData> {
+    return (
+      await axios.post(`${API_URL}/upload-file-fast`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -61,6 +75,28 @@ export const DocumentService = {
     await axios.delete(`${API_URL}/delete-file/${documentId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
+      },
+    });
+  },
+
+  async getFilesByUserWithFolderFormat(token: string): Promise<Category[]> {
+    const response = await axios.get(
+      `${API_URL}/get-files-by-user-with-folder-format`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    return response.data;
+  },
+
+  async uploadFiles(token: string, formData: FormData): Promise<void> {
+    await axios.post(`${API_URL}/upload-files`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
       },
     });
   },

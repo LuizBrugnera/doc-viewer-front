@@ -105,7 +105,6 @@ const Navbar: React.FC = () => {
                       >
                         Sobre
                       </Link>
-                      {/* Add more menu items here as needed */}
                     </nav>
                   </SheetContent>
                 </Sheet>

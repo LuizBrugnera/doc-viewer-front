@@ -8,7 +8,6 @@ import DepartmentHomePage from "@/components/pages/DepartmentHomePage";
 const AutorizationMiddlewareRoute: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const component = () => {
-    console.log(user);
     if (user?.role === "admin") {
       return <AdminHomePage />;
     } else if (user?.role === "user") {

@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
 import { useEffect, useState } from "react";
 import { Search, Users, FileText, Plus, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,37 +35,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentService } from "@/services/DocumentService";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
 import { Document, UserCustomer } from "@/types/GlobalTypes";
+import FolderSistemToUpload from "../FolderSistemToUpload";
 
 export default function DepartmentHomePage() {
-  const { token } = useAuth();
-  const [selectedUserCustomer, setSelectedUserCustomer] = useState(
-    null as UserCustomer | null
-  );
+  const { token, user } = useAuth();
+  const [selectedUserCustomer, setSelectedUserCustomer] =
+    useState<UserCustomer | null>(null);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
   const [isEditDocumentOpen, setIsEditDocumentOpen] = useState(false);
-  const [editingDocument, setEditingDocument] = useState(
-    null as Document | null
-  );
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [newDocumentName, setNewDocumentName] = useState("");
   const [newDocumentDescription, setNewDocumentDescription] = useState("");
+  const [newDocumentFolder, setNewDocumentFolder] = useState("");
   const [newDocumentFile, setNewDocumentFile] = useState<File | null>(null);
-
+  const [foldersAcess, setFoldersAcess] = useState<string[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
-
   const [users, setUsers] = useState<UserCustomer[]>([]);
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [documentSearchQuery, setDocumentSearchQuery] = useState("");
+
+  const folderFormat = {
+    boletos: "Boletos",
+    notasFiscais: "Notas Fiscais",
+    recibos: "Recibos",
+    laudosPCMSO: "Laudos PCMSO",
+    laudosPGR: "Laudos PGR",
+    laudosLTCAT: "Laudos LTCAT",
+    laudosDiversos: "Laudos Diversos",
+    relatorioFaturamento: "Relatório de Faturamento",
+    relatorioEventoS2240: "Relatório Evento S-2240",
+    relatorioEventoS2220: "Relatório Evento S-2220",
+    relatorioEventoS2210: "Relatório Evento S-2210",
+    contratos: "Contratos",
+    ordensServico: "Ordens de Serviço",
+  } as { [key: string]: string };
 
   const handleSelectUserCustomer = (client: UserCustomer) => {
     setSelectedUserCustomer(client);
   };
 
-  const handleAddDocument = async (e: any) => {
+  const handleAddDocument = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newDocumentFile || !selectedUserCustomer) {
+    if (!newDocumentFile || !selectedUserCustomer || !newDocumentFolder) {
       alert("Por favor, preencha todos os campos e selecione um cliente.");
       return;
     }
@@ -72,6 +90,7 @@ export default function DepartmentHomePage() {
     const formData = new FormData();
     formData.append("document", newDocumentFile);
     formData.append("name", newDocumentName);
+    formData.append("folder", newDocumentFolder);
     formData.append(
       "description",
       newDocumentDescription
@@ -98,6 +117,7 @@ export default function DepartmentHomePage() {
         type: newDocumentDescription,
         date: new Date().toISOString(),
         description: newDocumentDescription,
+        folder: newDocumentFolder,
       };
       setDocuments([...documents, newDoc]);
       setNewDocumentName("");
@@ -110,9 +130,8 @@ export default function DepartmentHomePage() {
     }
   };
 
-  const handleUpdateDocument = (e: any) => {
+  const handleUpdateDocument = (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement document update logic here
     setIsEditDocumentOpen(false);
   };
 
@@ -160,122 +179,211 @@ export default function DepartmentHomePage() {
       }
 
       const data = await DocumentService.getFilesByUserDepartment(token);
-      console.log(data);
       setDocuments(data);
     };
 
     fetchDocuments();
   }, [token]);
 
+  useEffect(() => {
+    const foldersToAcess = {
+      financeiro: ["boletos", "notasFiscais", "recibos"],
+      documentosTecnicos: [
+        "laudosPCMSO",
+        "laudosPGR",
+        "laudosLTCAT",
+        "laudosDiversos",
+      ],
+      faturamento: ["relatorioFaturamento"],
+      esocial: [
+        "relatorioEventoS-2240",
+        "relatorioEventoS-2220",
+        "relatorioEventoS-2210",
+      ],
+      vendas: ["contratos", "ordensServico"],
+    } as { [key: string]: string[] };
+
+    if (!token || !user) {
+      return;
+    }
+
+    const folders = foldersToAcess[user.department];
+    setFoldersAcess(folders);
+  }, [token, user]);
+
+  const filteredUsers = users.filter(
+    (client) =>
+      client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(clientSearchQuery.toLowerCase())
+  );
+
+  const filteredDocuments = documents.filter(
+    (doc) =>
+      doc.name.toLowerCase().includes(documentSearchQuery.toLowerCase()) ||
+      doc.type.toLowerCase().includes(documentSearchQuery.toLowerCase()) ||
+      folderFormat[doc.folder]
+        .toLowerCase()
+        .includes(documentSearchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex flex-col min-h-screen">
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Clientes</CardTitle>
-              <CardDescription>
-                Gerenciar clientes e seus documentos
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Search className="w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar clientes..."
-                    className="flex-grow"
-                  />
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Ação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users.map((client) => (
-                      <TableRow key={client.id}>
-                        <TableCell>{client.name}</TableCell>
-                        <TableCell>{client.email}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleSelectUserCustomer(client)}
-                          >
-                            <Users className="w-4 h-4 mr-2" />
-                            Selecionar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Documentos do Cliente</CardTitle>
-              <CardDescription>
-                {selectedUserCustomer
-                  ? `Documentos de ${selectedUserCustomer.name}`
-                  : "Selecione um cliente para ver os documentos"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {selectedUserCustomer ? (
-                <div className="space-y-4">
-                  <Button onClick={() => setIsAddDocumentOpen(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar Documento
-                  </Button>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Nome do Documento</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {documents
-                        .filter((doc) => doc.userId === selectedUserCustomer.id)
-                        .map((document) => (
-                          <TableRow key={document.id}>
-                            <TableCell>{document.name}</TableCell>
-                            <TableCell>{document.type.toUpperCase()}</TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
+      <main className="flex-grow container mx-auto px-2 py-8">
+        <Tabs defaultValue="users">
+          <TabsList className="mb-4">
+            <TabsTrigger value="users">Administração de Usuários</TabsTrigger>
+            <TabsTrigger value="upload">Upload de Arquivos</TabsTrigger>
+          </TabsList>
+          <TabsContent value="users">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Clientes</CardTitle>
+                  <CardDescription>
+                    Gerenciar clientes e seus documentos
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <Search className="w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar clientes..."
+                        className="flex-grow"
+                        value={clientSearchQuery}
+                        onChange={(e) => setClientSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <div className="h-80 overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Ação</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredUsers.map((client) => (
+                            <TableRow key={client.id}>
+                              <TableCell>{client.name}</TableCell>
+                              <TableCell>{client.email}</TableCell>
+                              <TableCell>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() =>
-                                    handleDeleteDocument(document.id)
+                                    handleSelectUserCustomer(client)
                                   }
                                 >
-                                  <Trash className="w-4 h-4" />
+                                  <Users className="w-4 h-4 mr-2" />
+                                  Selecionar
                                 </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground">
-                  <FileText className="w-12 h-12 mx-auto mb-4" />
-                  <p>Selecione um cliente para gerenciar seus documentos</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Documentos do Cliente</CardTitle>
+                  <CardDescription>
+                    {selectedUserCustomer
+                      ? `Documentos de ${selectedUserCustomer.name}`
+                      : "Selecione um cliente para ver os documentos"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {selectedUserCustomer ? (
+                    <div className="space-y-4">
+                      <Button onClick={() => setIsAddDocumentOpen(true)}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Documento
+                      </Button>
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Search className="w-4 h-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Buscar documentos..."
+                          className="flex-grow"
+                          value={documentSearchQuery}
+                          onChange={(e) =>
+                            setDocumentSearchQuery(e.target.value)
+                          }
+                        />
+                      </div>
+                      <div className="h-80 overflow-y-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Nome do Documento</TableHead>
+                              <TableHead>Pasta</TableHead>
+                              <TableHead>Tipo</TableHead>
+                              <TableHead>Ações</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredDocuments
+                              .filter(
+                                (doc) => doc.userId === selectedUserCustomer.id
+                              )
+                              .slice(0, 10)
+                              .map((document) => (
+                                <TableRow key={document.id}>
+                                  <TableCell>{document.name}</TableCell>
+                                  <TableCell>
+                                    {folderFormat[document.folder]}
+                                  </TableCell>
+                                  <TableCell>
+                                    {document.type.toUpperCase()}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex space-x-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleDeleteDocument(document.id)
+                                        }
+                                      >
+                                        <Trash className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground">
+                      <FileText className="w-12 h-12 mx-auto mb-4" />
+                      <p>Selecione um cliente para gerenciar seus documentos</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="upload">
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload em massa de Arquivos</CardTitle>
+                <CardDescription>
+                  Arraste e solte arquivos ou clique para selecionar
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FolderSistemToUpload />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
 
       <Dialog open={isAddDocumentOpen} onOpenChange={setIsAddDocumentOpen}>
@@ -297,6 +405,25 @@ export default function DepartmentHomePage() {
                   value={newDocumentName}
                   onChange={(e) => setNewDocumentName(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="documentFolder">Pasta</Label>
+                <Select
+                  value={newDocumentFolder}
+                  onValueChange={(value) => setNewDocumentFolder(value)}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a pasta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {foldersAcess.map((folder) => (
+                      <SelectItem key={folder} value={folder}>
+                        {folderFormat[folder]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="documentDescription">Descrição</Label>

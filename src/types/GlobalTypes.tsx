@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   password: string;
-  departmentId?: number;
+  department: string;
   role: "admin" | "user" | "department";
   rg?: string;
   cpf?: string;
@@ -91,4 +91,24 @@ export interface Document {
   date: string;
   description: string;
   userId: number;
+  folder: string;
+}
+
+export interface File {
+  id: number;
+  name: string;
+  resource: "file";
+  date: string;
+  type: string;
+}
+
+export interface Folder {
+  name: string;
+  resource: "folder";
+  contents: (File | Folder)[];
+}
+
+export interface Category {
+  name: string;
+  contents: Folder[];
 }

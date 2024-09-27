@@ -65,12 +65,12 @@ export default function AdminHomePage() {
   const [deletingClient, setDeletingClient] = useState<UserCustomer | null>(
     null
   );
-
+  // truncate table to tests
   const companies: Department[] = [
     { id: 1, name: "Empresa A", email: "empresaa@example.com" },
     { id: 2, name: "Empresa B", email: "empresab@example.com" },
   ];
-
+  // truncate table to tests
   const clients: UserCustomer[] = [
     {
       id: 1,
@@ -91,7 +91,7 @@ export default function AdminHomePage() {
       email: "clienteb1@example.com",
     },
   ];
-
+  // truncate table to tests
   const logs: Log[] = [
     {
       id: 1,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Search,
   ChevronRight,
@@ -8,6 +8,7 @@ import {
   FileText,
   ArrowLeft,
   Clock,
+  Upload,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,45 +34,20 @@ interface Category {
   contents: Folder[];
 }
 
-export default function FolderSistem() {
+export default function FolderSistemToUpload() {
   const { token } = useAuth();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activePath, setActivePath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<FileList | null>(null);
+
   const formatMySqlToBrDate = (date: string) => {
     const [year, month, day] = date.split("T")[0].split("-");
     return `${day}/${month}/${year}`;
   };
 
-  const handleDownload = async (id: number, fileName: string) => {
-    try {
-      if (!token) {
-        alert("Usuário não autenticado.");
-        return;
-      }
-
-      const response = await DocumentService.downloadFile(token, id);
-      const contentType =
-        response.headers["content-type"] || "application/octet-stream";
-
-      const url = window.URL.createObjectURL(
-        new Blob([response.data], { type: contentType })
-      );
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `${fileName}`);
-      document.body.appendChild(link);
-      link.click();
-
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Erro ao fazer download do arquivo:", error);
-      alert("Erro ao fazer download do arquivo.");
-    }
-  };
-  const [categories, setCategories] = useState<Category[]>([
+  const categories = [
     {
       name: "Financeiro",
       contents: [
@@ -160,7 +136,7 @@ export default function FolderSistem() {
         { name: "Ordens de Serviço", resource: "folder", contents: [] },
       ],
     },
-  ]);
+  ] as Category[];
 
   const handleCategoryClick = (categoryName: string) => {
     if (activeCategory === categoryName) {
@@ -180,8 +156,6 @@ export default function FolderSistem() {
       } else {
         setActivePath([...activePath, item.name]);
       }
-    } else {
-      handleDownload(item.id, item.name);
     }
   };
 
@@ -222,6 +196,66 @@ export default function FolderSistem() {
     });
   };
 
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setUploadedFiles(e.dataTransfer.files);
+      handleUpload(e.dataTransfer.files);
+    }
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setUploadedFiles(e.target.files);
+      handleUpload(e.target.files);
+    }
+  };
+
+  const handleUpload = async (files: FileList) => {
+    if (!token) {
+      alert("Usuário não autenticado.");
+      return;
+    }
+
+    for (let i = 0; i < files.length; i++) {
+      const formData = new FormData();
+      formData.append("document", files[i]);
+      formData.append("folder", activePath.join("/"));
+      formData.append("name", files[i].name);
+      console.log(formData.get("folder"));
+      console.log(activePath);
+      try {
+        await DocumentService.uploadFileFast(token, formData);
+      } catch (error) {
+        console.error("Erro ao fazer upload dos arquivos:", error);
+        alert("Erro ao fazer upload dos arquivos.");
+      }
+    }
+
+    try {
+      alert("Arquivos enviados com sucesso!");
+    } catch (error) {
+      console.error("Erro ao fazer upload dos arquivos:", error);
+      alert("Erro ao fazer upload dos arquivos.");
+    }
+  };
+
+  useEffect(() => {
+    console.log(activePath);
+  }, [activePath]);
+
   const renderContent = (content: (Folder | File)[]) => {
     const filteredContent = searchQuery ? searchItems(content) : content;
 
@@ -230,12 +264,12 @@ export default function FolderSistem() {
         {filteredContent.map((item, index) => (
           <div
             key={index}
-            className="bg-gray-100 p-4 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer"
+            className="bg-gray-100 p-4 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer mb-4"
             onClick={() => handleItemClick(item)}
           >
             {item.resource === "folder" ? (
               item.name === "" ? (
-                <ArrowLeft className="h-12 w-12 mb-2 text-gray-600" />
+                <ArrowLeft className="h-12 w-12 mb-4 text-gray-600 " />
               ) : (
                 <Folder className="h-12 w-12 mb-2 text-gray-600" />
               )
@@ -255,21 +289,36 @@ export default function FolderSistem() {
     );
   };
 
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      if (!token) {
-        alert("Usuário não autenticado.");
-        return;
-      }
-
-      const data = await DocumentService.getFilesByUserWithFolderFormat(token);
-
-      setCategories(data);
-    };
-
-    fetchDocuments();
-  }, [token]);
-
+  const isUploadArea =
+    (activeCategory === "Financeiro" && activePath.includes("Boletos")) ||
+    (activeCategory === "Financeiro" && activePath.includes("Notas Fiscais")) ||
+    (activeCategory === "Financeiro" && activePath.includes("Recibos")) ||
+    (activeCategory === "Faturamento" &&
+      activePath.includes("Relatório de Faturamento")) ||
+    (activeCategory === "E-social" &&
+      activePath.includes("Relatório Evento S-2240")) ||
+    (activeCategory === "E-social" &&
+      activePath.includes("Relatório Evento S-2220")) ||
+    (activeCategory === "E-social" &&
+      activePath.includes("Relatório Evento S-2210")) ||
+    (activeCategory === "Vendas" && activePath.includes("Contratos")) ||
+    (activeCategory === "Vendas" && activePath.includes("Ordens de Serviço")) ||
+    (activeCategory === "Documentos tecnicos" &&
+      activePath.includes("Laudos PCMSO")) ||
+    (activeCategory === "Documentos tecnicos" &&
+      activePath.includes("Laudos PGR")) ||
+    (activeCategory === "Documentos tecnicos" &&
+      activePath.includes("Laudos LTCAT")) ||
+    (activeCategory === "Documentos tecnicos" &&
+      activePath.includes("Laudos Diversos")) ||
+    (activeCategory === "Exames" &&
+      activePath.includes("Exames Laboratoriais")) ||
+    (activeCategory === "Exames" && activePath.includes("Exames Telecardio")) ||
+    (activeCategory === "Exames" && activePath.includes("Exames Local")) ||
+    (activeCategory === "Exames" &&
+      activePath.includes("Exames Proclinic (Aso)")) ||
+    (activeCategory === "Exames" &&
+      activePath.includes("Exames Proclinic (Audiometria)"));
   return (
     <div className="flex-grow container mx-auto px-4 py-8 flex">
       <aside className="w-64 pr-8">
@@ -336,6 +385,34 @@ export default function FolderSistem() {
                 ))}
             </div>
           )}
+          {isUploadArea ? (
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center mb-4 ${
+                dragActive ? "border-primary" : "border-gray-300"
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Input
+                type="file"
+                multiple
+                onChange={handleFileChange}
+                className="hidden"
+                id="file-upload"
+              />
+              <label
+                htmlFor="file-upload"
+                className="cursor-pointer flex flex-col items-center"
+              >
+                <Upload className="w-12 h-12 text-gray-400 mb-4" />
+                <span className="text-sm text-gray-600">
+                  Arraste arquivos aqui ou clique para selecionar
+                </span>
+              </label>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
