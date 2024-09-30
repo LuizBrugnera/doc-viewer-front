@@ -16,9 +16,21 @@ import useAuth from "@/security/UseAuth";
 
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { token } = useAuth();
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+
+    const hours = date.getUTCHours().toString().padStart(2, "0");
+    const minutes = date.getUTCMinutes().toString().padStart(2, "0");
+    const day = date.getUTCDate().toString().padStart(2, "0");
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, "0");
+    const year = date.getUTCFullYear();
+
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
+
   const handleNotificationClick = (notificationId: string) => {
     console.log(`Notification ${notificationId} clicked`);
     setIsOpen(false);
@@ -83,7 +95,7 @@ export default function NotificationBell() {
                       {notification.description}
                     </div>
                     <div className="text-xs text-gray-400">
-                      {notification.date}
+                      {formatDate(notification.date)}
                     </div>
                   </DropdownMenuItem>
                 ))
