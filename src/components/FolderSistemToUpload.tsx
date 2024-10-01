@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Search,
   ChevronRight,
@@ -14,6 +14,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import useAuth from "@/security/UseAuth";
 import { DocumentService } from "@/services/DocumentService";
+import {
+  categoriesVoid,
+  folderFatherFormat,
+  folderFormat,
+  folderUpFoldersFormat,
+} from "./utils";
 
 interface File {
   id: number;
@@ -34,18 +40,27 @@ interface Category {
   contents: Folder[];
 }
 
-export default function FolderSistemToUpload() {
+interface FolderSistemToUploadProps {
+  foldersAcess?: string[];
+}
+
+export default function FolderSistemToUpload({
+  foldersAcess,
+}: FolderSistemToUploadProps) {
   const { token } = useAuth();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activePath, setActivePath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<FileList | null>(null);
-
+  const activePathRef = useRef(activePath);
   const formatMySqlToBrDate = (date: string) => {
     const [year, month, day] = date.split("T")[0].split("-");
     return `${day}/${month}/${year}`;
   };
+
+  useEffect(() => {
+    activePathRef.current = activePath;
+  }, [activePath]);
 
   const categories = [
     {
@@ -138,6 +153,34 @@ export default function FolderSistemToUpload() {
     },
   ] as Category[];
 
+  const [acessCategories, setAcessCategories] =
+    useState<Category[]>(categories);
+
+  useEffect(() => {
+    if (foldersAcess) {
+      let newObject = JSON.parse(JSON.stringify(categoriesVoid)) as Category[];
+
+      newObject.forEach((category) => {
+        foldersAcess.forEach((folder) => {
+          return folderUpFoldersFormat[folderFatherFormat[folder]] ===
+            category.name
+            ? category.contents.push({
+                name: folderFormat[folder],
+                resource: "folder",
+                contents: [],
+              })
+            : null;
+        });
+      });
+
+      newObject = newObject.filter((category) => {
+        return category.contents.length > 0;
+      });
+
+      setAcessCategories(newObject);
+    }
+  }, [foldersAcess]);
+
   const handleCategoryClick = (categoryName: string) => {
     if (activeCategory === categoryName) {
       setActiveCategory(null);
@@ -160,7 +203,7 @@ export default function FolderSistemToUpload() {
   };
 
   const getCurrentContent = () => {
-    let current: (Folder | File)[] | undefined = categories.find(
+    let current: (Folder | File)[] | undefined = acessCategories.find(
       (cat) => cat.name === activeCategory
     )?.contents;
 
@@ -211,14 +254,12 @@ export default function FolderSistemToUpload() {
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setUploadedFiles(e.dataTransfer.files);
       handleUpload(e.dataTransfer.files);
     }
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setUploadedFiles(e.target.files);
       handleUpload(e.target.files);
     }
   };
@@ -232,10 +273,8 @@ export default function FolderSistemToUpload() {
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
       formData.append("document", files[i]);
-      formData.append("folder", activePath.join("/"));
+      formData.append("folder", activePathRef.current[1]);
       formData.append("name", files[i].name);
-      console.log(formData.get("folder"));
-      console.log(activePath);
       try {
         await DocumentService.uploadFileFast(token, formData);
       } catch (error) {
@@ -251,10 +290,6 @@ export default function FolderSistemToUpload() {
       alert("Erro ao fazer upload dos arquivos.");
     }
   };
-
-  useEffect(() => {
-    console.log(activePath);
-  }, [activePath]);
 
   const renderContent = (content: (Folder | File)[]) => {
     const filteredContent = searchQuery ? searchItems(content) : content;
@@ -324,7 +359,7 @@ export default function FolderSistemToUpload() {
       <aside className="w-64 pr-8">
         <nav>
           <ul className="space-y-2">
-            {categories.map((category, index) => (
+            {acessCategories.map((category, index) => (
               <li key={index}>
                 <Button
                   variant="ghost"
@@ -367,7 +402,7 @@ export default function FolderSistemToUpload() {
             renderContent(getCurrentContent())
           ) : (
             <div className="grid grid-cols-3 gap-4">
-              {categories
+              {acessCategories
                 .filter((category) =>
                   category.name
                     .toLowerCase()

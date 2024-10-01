@@ -41,6 +41,7 @@ import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
 import { Document, UserCustomer } from "@/types/GlobalTypes";
 import FolderSistemToUpload from "../FolderSistemToUpload";
+import { folderFormat, foldersToAcess } from "../utils";
 
 export default function DepartmentHomePage() {
   const { token, user } = useAuth();
@@ -58,22 +59,6 @@ export default function DepartmentHomePage() {
   const [users, setUsers] = useState<UserCustomer[]>([]);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [documentSearchQuery, setDocumentSearchQuery] = useState("");
-
-  const folderFormat = {
-    boletos: "Boletos",
-    notasFiscais: "Notas Fiscais",
-    recibos: "Recibos",
-    laudosPCMSO: "Laudos PCMSO",
-    laudosPGR: "Laudos PGR",
-    laudosLTCAT: "Laudos LTCAT",
-    laudosDiversos: "Laudos Diversos",
-    relatorioFaturamento: "Relatório de Faturamento",
-    relatorioEventoS2240: "Relatório Evento S-2240",
-    relatorioEventoS2220: "Relatório Evento S-2220",
-    relatorioEventoS2210: "Relatório Evento S-2210",
-    contratos: "Contratos",
-    ordensServico: "Ordens de Serviço",
-  } as { [key: string]: string };
 
   const handleSelectUserCustomer = (client: UserCustomer) => {
     setSelectedUserCustomer(client);
@@ -186,23 +171,6 @@ export default function DepartmentHomePage() {
   }, [token]);
 
   useEffect(() => {
-    const foldersToAcess = {
-      financeiro: ["boletos", "notasFiscais", "recibos"],
-      documentosTecnicos: [
-        "laudosPCMSO",
-        "laudosPGR",
-        "laudosLTCAT",
-        "laudosDiversos",
-      ],
-      faturamento: ["relatorioFaturamento"],
-      esocial: [
-        "relatorioEventoS-2240",
-        "relatorioEventoS-2220",
-        "relatorioEventoS-2210",
-      ],
-      vendas: ["contratos", "ordensServico"],
-    } as { [key: string]: string[] };
-
     if (!token || !user) {
       return;
     }
@@ -331,7 +299,6 @@ export default function DepartmentHomePage() {
                               .filter(
                                 (doc) => doc.userId === selectedUserCustomer.id
                               )
-                              .slice(0, 10)
                               .map((document) => (
                                 <TableRow key={document.id}>
                                   <TableCell>{document.name}</TableCell>
@@ -379,7 +346,7 @@ export default function DepartmentHomePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <FolderSistemToUpload />
+                <FolderSistemToUpload foldersAcess={foldersAcess} />
               </CardContent>
             </Card>
           </TabsContent>
