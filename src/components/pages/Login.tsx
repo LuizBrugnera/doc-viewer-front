@@ -30,7 +30,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     signOut();
-  }, [signOut]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const goToForgot = () => {
     navigate("/forgot-password");
