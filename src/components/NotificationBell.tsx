@@ -47,7 +47,7 @@ export default function NotificationBell() {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [token]);
 
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>

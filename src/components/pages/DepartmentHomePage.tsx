@@ -41,10 +41,14 @@ import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
 import { Document, UserCustomer } from "@/types/GlobalTypes";
 import FolderSistemToUpload from "../FolderSistemToUpload";
-import { folderFormat, foldersToAcess } from "../utils";
+import { folderFormat } from "../utils";
 
-export default function DepartmentHomePage() {
-  const { token, user } = useAuth();
+export default function DepartmentHomePage({
+  foldersAcess,
+}: {
+  foldersAcess: string[];
+}) {
+  const { token } = useAuth();
   const [selectedUserCustomer, setSelectedUserCustomer] =
     useState<UserCustomer | null>(null);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
@@ -54,7 +58,6 @@ export default function DepartmentHomePage() {
   const [newDocumentDescription, setNewDocumentDescription] = useState("");
   const [newDocumentFolder, setNewDocumentFolder] = useState("");
   const [newDocumentFile, setNewDocumentFile] = useState<File | null>(null);
-  const [foldersAcess, setFoldersAcess] = useState<string[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [users, setUsers] = useState<UserCustomer[]>([]);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
@@ -169,15 +172,6 @@ export default function DepartmentHomePage() {
 
     fetchDocuments();
   }, [token]);
-
-  useEffect(() => {
-    if (!token || !user) {
-      return;
-    }
-
-    const folders = foldersToAcess[user.department];
-    setFoldersAcess(folders);
-  }, [token, user]);
 
   const filteredUsers = users.filter(
     (client) =>

@@ -30,7 +30,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     signOut();
-  }, []);
+  }, [signOut]);
 
   const goToForgot = () => {
     navigate("/forgot-password");

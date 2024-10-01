@@ -13,14 +13,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import useAuth from "@/security/UseAuth";
 import { DocumentService } from "@/services/DocumentService";
+import { categoriesDefault } from "./utils";
+import { Category, File } from "@/types/GlobalTypes";
 
-interface File {
-  id: number;
-  name: string;
-  resource: "file";
-  date: string;
-  type: string;
-}
 
 interface Folder {
   name: string;
@@ -28,10 +23,7 @@ interface Folder {
   contents: (File | Folder)[];
 }
 
-interface Category {
-  name: string;
-  contents: Folder[];
-}
+
 
 export default function FolderSistem() {
   const { token } = useAuth();
@@ -71,96 +63,9 @@ export default function FolderSistem() {
       alert("Erro ao fazer download do arquivo.");
     }
   };
-  const [categories, setCategories] = useState<Category[]>([
-    {
-      name: "Financeiro",
-      contents: [
-        {
-          name: "Boletos",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Notas Fiscais",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Recibos",
-          resource: "folder",
-          contents: [],
-        },
-      ],
-    },
-    {
-      name: "Documentos tecnicos",
-      contents: [
-        {
-          name: "Laudos PCMSO",
-          resource: "folder",
-          contents: [],
-        },
-        { name: "Laudos PGR", resource: "folder", contents: [] },
-        { name: "Laudos LTCAT", resource: "folder", contents: [] },
-        { name: "Laudos Diversos", resource: "folder", contents: [] },
-      ],
-    },
-    {
-      name: "Exames",
-      contents: [
-        {
-          name: "Exames Laboratoriais",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Exames Telecardio",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Exames Local",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Exames Proclinic (Audiometria)",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Exames Proclinic (Aso)",
-          resource: "folder",
-          contents: [],
-        },
-      ],
-    },
-    {
-      name: "Faturamento",
-      contents: [
-        {
-          name: "Relatório de Faturamento",
-          resource: "folder",
-          contents: [],
-        },
-      ],
-    },
-    {
-      name: "E-social",
-      contents: [
-        { name: "Relatório Evento S-2240", resource: "folder", contents: [] },
-        { name: "Relatório Evento S-2220", resource: "folder", contents: [] },
-        { name: "Relatório Evento S-2210", resource: "folder", contents: [] },
-      ],
-    },
-    {
-      name: "Vendas",
-      contents: [
-        { name: "Contratos", resource: "folder", contents: [] },
-        { name: "Ordens de Serviço", resource: "folder", contents: [] },
-      ],
-    },
-  ]);
+  const [categories, setCategories] = useState<Category[]>(
+    JSON.parse(JSON.stringify(categoriesDefault)) as Category[]
+  );
 
   const handleCategoryClick = (categoryName: string) => {
     if (activeCategory === categoryName) {

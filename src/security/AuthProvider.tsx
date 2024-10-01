@@ -2,6 +2,7 @@ import React, { useState, ReactNode, useEffect } from "react";
 import { User } from "../types/GlobalTypes";
 import AuthContext from "./AuthContext";
 import { jwtDecode } from "jwt-decode";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -83,12 +84,20 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   if (isLoading) {
-    return <div>Carregando...</div>;
+    return <LoadingSpinner size={64} />;
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, token, signIn, signOut, isAuthenticated, isLoading, updateDataToken }}
+      value={{
+        user,
+        token,
+        signIn,
+        signOut,
+        isAuthenticated,
+        isLoading,
+        updateDataToken,
+      }}
     >
       {children}
     </AuthContext.Provider>

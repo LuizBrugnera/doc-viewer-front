@@ -15,29 +15,20 @@ import { Button } from "@/components/ui/button";
 import useAuth from "@/security/UseAuth";
 import { DocumentService } from "@/services/DocumentService";
 import {
+  categoriesDefault,
   categoriesVoid,
   folderFatherFormat,
   folderFormat,
   folderUpFoldersFormat,
+  formatMySqlToBrDate,
+  isUploadArea,
 } from "./utils";
-
-interface File {
-  id: number;
-  name: string;
-  resource: "file";
-  date: string;
-  type: string;
-}
+import { Category, File } from "@/types/GlobalTypes";
 
 interface Folder {
   name: string;
   resource: "folder";
   contents: (File | Folder)[];
-}
-
-interface Category {
-  name: string;
-  contents: Folder[];
 }
 
 interface FolderSistemToUploadProps {
@@ -53,108 +44,14 @@ export default function FolderSistemToUpload({
   const [searchQuery, setSearchQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const activePathRef = useRef(activePath);
-  const formatMySqlToBrDate = (date: string) => {
-    const [year, month, day] = date.split("T")[0].split("-");
-    return `${day}/${month}/${year}`;
-  };
 
   useEffect(() => {
     activePathRef.current = activePath;
   }, [activePath]);
 
-  const categories = [
-    {
-      name: "Financeiro",
-      contents: [
-        {
-          name: "Boletos",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Notas Fiscais",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Recibos",
-          resource: "folder",
-          contents: [],
-        },
-      ],
-    },
-    {
-      name: "Documentos tecnicos",
-      contents: [
-        {
-          name: "Laudos PCMSO",
-          resource: "folder",
-          contents: [],
-        },
-        { name: "Laudos PGR", resource: "folder", contents: [] },
-        { name: "Laudos LTCAT", resource: "folder", contents: [] },
-        { name: "Laudos Diversos", resource: "folder", contents: [] },
-      ],
-    },
-    {
-      name: "Exames",
-      contents: [
-        {
-          name: "Exames Laboratoriais",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Exames Telecardio",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Exames Local",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Exames Proclinic (Audiometria)",
-          resource: "folder",
-          contents: [],
-        },
-        {
-          name: "Exames Proclinic (Aso)",
-          resource: "folder",
-          contents: [],
-        },
-      ],
-    },
-    {
-      name: "Faturamento",
-      contents: [
-        {
-          name: "Relatório de Faturamento",
-          resource: "folder",
-          contents: [],
-        },
-      ],
-    },
-    {
-      name: "E-social",
-      contents: [
-        { name: "Relatório Evento S-2240", resource: "folder", contents: [] },
-        { name: "Relatório Evento S-2220", resource: "folder", contents: [] },
-        { name: "Relatório Evento S-2210", resource: "folder", contents: [] },
-      ],
-    },
-    {
-      name: "Vendas",
-      contents: [
-        { name: "Contratos", resource: "folder", contents: [] },
-        { name: "Ordens de Serviço", resource: "folder", contents: [] },
-      ],
-    },
-  ] as Category[];
-
-  const [acessCategories, setAcessCategories] =
-    useState<Category[]>(categories);
+  const [acessCategories, setAcessCategories] = useState<Category[]>(
+    JSON.parse(JSON.stringify(categoriesDefault)) as Category[]
+  );
 
   useEffect(() => {
     if (foldersAcess) {
@@ -324,36 +221,6 @@ export default function FolderSistemToUpload({
     );
   };
 
-  const isUploadArea =
-    (activeCategory === "Financeiro" && activePath.includes("Boletos")) ||
-    (activeCategory === "Financeiro" && activePath.includes("Notas Fiscais")) ||
-    (activeCategory === "Financeiro" && activePath.includes("Recibos")) ||
-    (activeCategory === "Faturamento" &&
-      activePath.includes("Relatório de Faturamento")) ||
-    (activeCategory === "E-social" &&
-      activePath.includes("Relatório Evento S-2240")) ||
-    (activeCategory === "E-social" &&
-      activePath.includes("Relatório Evento S-2220")) ||
-    (activeCategory === "E-social" &&
-      activePath.includes("Relatório Evento S-2210")) ||
-    (activeCategory === "Vendas" && activePath.includes("Contratos")) ||
-    (activeCategory === "Vendas" && activePath.includes("Ordens de Serviço")) ||
-    (activeCategory === "Documentos tecnicos" &&
-      activePath.includes("Laudos PCMSO")) ||
-    (activeCategory === "Documentos tecnicos" &&
-      activePath.includes("Laudos PGR")) ||
-    (activeCategory === "Documentos tecnicos" &&
-      activePath.includes("Laudos LTCAT")) ||
-    (activeCategory === "Documentos tecnicos" &&
-      activePath.includes("Laudos Diversos")) ||
-    (activeCategory === "Exames" &&
-      activePath.includes("Exames Laboratoriais")) ||
-    (activeCategory === "Exames" && activePath.includes("Exames Telecardio")) ||
-    (activeCategory === "Exames" && activePath.includes("Exames Local")) ||
-    (activeCategory === "Exames" &&
-      activePath.includes("Exames Proclinic (Aso)")) ||
-    (activeCategory === "Exames" &&
-      activePath.includes("Exames Proclinic (Audiometria)"));
   return (
     <div className="flex-grow container mx-auto px-4 py-8 flex">
       <aside className="w-64 pr-8">
@@ -420,7 +287,7 @@ export default function FolderSistemToUpload({
                 ))}
             </div>
           )}
-          {isUploadArea ? (
+          {isUploadArea(activeCategory, activePath) ? (
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center mb-4 ${
                 dragActive ? "border-primary" : "border-gray-300"

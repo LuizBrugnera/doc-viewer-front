@@ -11,7 +11,6 @@ import ProfileEditPage from "./components/pages/ProfileEditPage";
 import ForgotPasswordPage from "./components/pages/ForgotPasswordPage";
 import VerifyCodePage from "./components/pages/VerifyCode";
 import ResetPasswordPage from "./components/pages/ResetPassword";
-import FolderSistem from "./components/FolderSistem";
 
 const App: React.FC = () => {
   return (
@@ -26,7 +25,6 @@ const App: React.FC = () => {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/verify-code" element={<VerifyCodePage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/folder-site" element={<FolderSistem />} />
         <Route
           path="/profile-edit"
           element={<PrivateRoute component={ProfileEditPage} />}

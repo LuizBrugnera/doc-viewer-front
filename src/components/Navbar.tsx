@@ -6,6 +6,7 @@ import { Menu } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import NotificationBell from "./NotificationBell";
+import LoadingSpinner from "./LoadingSpinner";
 
 const Navbar: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -17,7 +18,7 @@ const Navbar: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div>Carregando...</div>;
+    return <LoadingSpinner />;
   }
 
   return (
