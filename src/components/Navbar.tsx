@@ -9,7 +9,7 @@ import NotificationBell from "./NotificationBell";
 import LoadingSpinner from "./LoadingSpinner";
 
 const Navbar: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -24,7 +24,9 @@ const Navbar: React.FC = () => {
   return (
     <Fragment>
       {isAuthenticated ? (
-        <header className="border-b">
+        <header
+          className={`border-b ${user?.role === "exames" ? "hidden" : ""}`}
+        >
           <div className="container mx-auto px-4 py-4 flex justify-between items-center">
             <div className="flex-shrink-0 flex items-center">
               <Link to={"/home"} className="flex items-center">
@@ -59,7 +61,11 @@ const Navbar: React.FC = () => {
           </div>
         </header>
       ) : (
-        <nav className="bg-white shadow-sm">
+        <nav
+          className={`bg-white shadow-sm ${
+            user?.role === "exames" ? "hidden" : ""
+          }`}
+        >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-16">
               <div className="flex-shrink-0 flex items-center">
