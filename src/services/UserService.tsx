@@ -55,4 +55,15 @@ export const UserService = {
       },
     });
   },
+
+  async updateUserByAdminClient(
+    token: string,
+    userData: UserInfo
+  ): Promise<void> {
+    await axios.post(`${API_URL}/update-client`, userData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  },
 };

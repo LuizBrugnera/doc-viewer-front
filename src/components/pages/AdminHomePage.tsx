@@ -44,13 +44,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Log, User } from "@/types/GlobalTypes";
+import { Document, Log, User } from "@/types/GlobalTypes";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
 import { LogService } from "@/services/LogService";
-import { folderUpFoldersFormat, formatMySqlToBrDate } from "../utils";
+import {
+  folderFormat,
+  foldersToAcess,
+  folderUpFoldersFormat,
+  formatMySqlToBrDate,
+} from "../utils";
 import FolderSistemToUpload from "../FolderSistemToUpload";
 import { ScrollArea } from "../ui/scroll-area";
+import { UserManagement } from "../UserManagement";
+import { DocumentService } from "@/services/DocumentService";
 
 type AddDepartmentForm = {
   name: string;
@@ -71,6 +78,18 @@ type UpdateDepartmentForm = {
   department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
 };
 
+type UpdateUserForm = {
+  id: number;
+  name: string;
+  email: string;
+  cod: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  cnpj: string;
+  rg: string;
+};
+
 export default function AdminHomePage() {
   const { token } = useAuth();
   const [selectedDepartment, setSelectedDepartment] = useState<User | null>(
@@ -84,7 +103,9 @@ export default function AdminHomePage() {
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] =
     useState<UpdateDepartmentForm | null>(null);
-  const [editingClient, setEditingClient] = useState<User | null>(null);
+  const [editingClient, setEditingClient] = useState<UpdateUserForm | null>(
+    null
+  );
   const [isDeleteDepartmentOpen, setIsDeleteDepartmentOpen] = useState(false);
   const [isDeleteClientOpen, setIsDeleteClientOpen] = useState(false);
   const [deletingDepartment, setDeletingDepartment] = useState<User | null>(
@@ -95,6 +116,7 @@ export default function AdminHomePage() {
   const [departments, setDepartments] = useState<User[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
+  const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
   const [addDepartmentForm, setAddDepartmentForm] =
     useState<AddDepartmentForm | null>({
       name: "",
@@ -104,6 +126,18 @@ export default function AdminHomePage() {
       confirmPassword: "",
       department: "financeiro",
     });
+
+  const [usersDisplayed, setUsersDisplayed] = useState(50);
+  const [newDocumentName, setNewDocumentName] = useState("");
+  const [newDocumentDescription, setNewDocumentDescription] = useState("");
+  const [newDocumentFolder, setNewDocumentFolder] = useState("");
+  const [newDocumentFile, setNewDocumentFile] = useState<File | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const handleLoadMoreUsers = () => {
+    setUsersDisplayed((prev) => Math.min(prev + 100, 3500));
+  };
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
   const filteredUsers = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
@@ -114,7 +148,6 @@ export default function AdminHomePage() {
       alert("Usuário não autenticado.");
       return;
     }
-    console.log("Fetching departments");
     const data = await UserService.findAllUserDepartaments(token);
     setDepartments(data);
   };
@@ -130,6 +163,7 @@ export default function AdminHomePage() {
       }
 
       const data = await UserService.findByDepartment(token);
+      console.log(data);
       setClients(data);
     } catch (error) {
       console.error("Erro ao buscar clientes:", error);
@@ -141,8 +175,87 @@ export default function AdminHomePage() {
     fetchClients();
   }, [token]);
 
+  useEffect(() => {
+    setEditingClient({
+      id: 1,
+      name: "",
+      email: "",
+      phone: "",
+      rg: "",
+      cnpj: "",
+      password: "",
+      confirmPassword: "",
+      cod: "",
+    });
+  }, [isAddClientOpen]);
+
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      if (!token) {
+        alert("Usuário não autenticado.");
+        return;
+      }
+
+      const data = await DocumentService.getFilesByUserDepartment(token);
+      setDocuments(data);
+    };
+
+    fetchDocuments();
+  }, [token]);
+
   const handleSelectDepartment = (department: User | null) => {
     setSelectedDepartment(department);
+  };
+
+  const handleAddDocument = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newDocumentFile || !selectedUser || !newDocumentFolder) {
+      alert("Por favor, preencha todos os campos e selecione um cliente.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("document", newDocumentFile);
+    formData.append("name", newDocumentName);
+    formData.append("folder", newDocumentFolder);
+    formData.append(
+      "description",
+      newDocumentDescription
+        ? newDocumentDescription
+        : `Arquivo ${newDocumentName}`
+    );
+
+    try {
+      if (!token || !selectedUser) {
+        alert("Token ou cliente não encontrado");
+        return;
+      }
+
+      const result = await DocumentService.uploadFile(
+        token,
+        +selectedUser.id,
+        formData
+      );
+
+      const newDoc: Document = {
+        id: result.id,
+        userId: +selectedUser.id,
+        name: newDocumentName,
+        type: newDocumentDescription,
+        date: new Date().toISOString(),
+        description: newDocumentDescription,
+        folder: newDocumentFolder,
+      };
+      setDocuments([...documents, newDoc]);
+      setNewDocumentName("");
+      setNewDocumentDescription("");
+      setNewDocumentFile(null);
+      setIsAddDocumentOpen(false);
+    } catch (error) {
+      console.error("Erro ao fazer upload do arquivo:", error);
+      alert("Erro ao fazer upload do arquivo.");
+    }
   };
 
   const handleSelectDepartmentData = (department: User | null) => {
@@ -252,18 +365,96 @@ export default function AdminHomePage() {
 
   const handleAddClient = (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement client addition logic here
+    if (!editingClient) {
+      alert("Por favor, preencha todos os campos.");
+      return;
+    }
+
+    if (
+      !editingClient.name ||
+      !editingClient.email ||
+      !editingClient?.password
+    ) {
+      alert("Por favor, preencha todos os campos obrigatórios.");
+      return;
+    }
+
+    if (!editingClient.password !== !editingClient.confirmPassword) {
+      alert("As senhas não coincidem.");
+      return;
+    }
+
+    const data = {
+      name: editingClient.name,
+      email: editingClient.email,
+      password: editingClient.password,
+      confirmPassword: editingClient.confirmPassword,
+      rg: editingClient.rg,
+      cnpj: editingClient.cnpj,
+      department: "user",
+      role: "user",
+    };
+
+    if (!token) {
+      alert("Token expirado! Logue novamente.");
+      return;
+    }
+    UserService.createUser(token, data);
+
+    setTimeout(() => {
+      fetchClients();
+    }, 3000);
+
     setIsAddClientOpen(false);
   };
 
   const handleEditClient = (client: User) => {
-    setEditingClient(client);
+    setEditingClient({
+      id: +client.id,
+      name: client.name,
+      email: client.email,
+      cod: client.cod || "",
+      phone: client.phone || "",
+      rg: client.rg || "",
+      cnpj: client.cnpj || "",
+      password: client.password || "",
+      confirmPassword: "",
+    });
     setIsEditClientOpen(true);
   };
 
   const handleUpdateClient = (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement client update logic here
+
+    if (!editingClient) {
+      alert("Por favor, preencha todos os campos.");
+      return;
+    }
+
+    if (!editingClient.password !== !editingClient.confirmPassword) {
+      alert("As senhas não coincidem.");
+      return;
+    }
+
+    const data = {
+      id: editingClient.id,
+      name: editingClient.name,
+      email: editingClient.email,
+      password: editingClient.password,
+      phone: editingClient.phone,
+      cod: editingClient.cod,
+      rg: editingClient.rg,
+      cnpj: editingClient.cnpj,
+    };
+
+    if (!token) {
+      alert("Token expirado! Logue novamente.");
+      return;
+    }
+    UserService.updateUserByAdminClient(token, data);
+    setTimeout(() => {
+      fetchClients();
+    }, 3000);
     setIsEditClientOpen(false);
   };
 
@@ -274,8 +465,16 @@ export default function AdminHomePage() {
 
   const confirmDeleteClient = () => {
     if (deletingClient) {
-      // Implement client deletion logic here
-      console.log(`Deleting client with ID ${deletingClient.id}`);
+      if (!token) {
+        alert("Token expirado! Logue novamente.");
+        return;
+      }
+
+      UserService.deleteUser(token, +deletingClient.id).then(() => {
+        setDeletingClient(null);
+        setIsDeleteClientOpen(false);
+        fetchClients();
+      });
       setIsDeleteClientOpen(false);
       setDeletingClient(null);
     }
@@ -291,9 +490,7 @@ export default function AdminHomePage() {
       if (!selectedDepartment) {
         return;
       }
-      console.log(selectedDepartment);
       const data = await LogService.findByUser(token, +selectedDepartment.id);
-      console.log(data);
       setLogs(data);
     };
     fetchLogsOfDepartment();
@@ -307,6 +504,7 @@ export default function AdminHomePage() {
           <TabsList>
             <TabsTrigger value="departments">Departamentos</TabsTrigger>
             <TabsTrigger value="clients">Usuários</TabsTrigger>
+            <TabsTrigger value="users">Documentos de Usuários</TabsTrigger>
             <TabsTrigger value="logs">Logs</TabsTrigger>
             <TabsTrigger value="upload">Enviar Arquivos</TabsTrigger>
           </TabsList>
@@ -426,7 +624,7 @@ export default function AdminHomePage() {
                     </TableHeader>
                     <TableBody>
                       {" "}
-                      {filteredUsers.slice(0, 50).map((client) => (
+                      {filteredUsers.slice(0, usersDisplayed).map((client) => (
                         <TableRow key={client.id}>
                           {" "}
                           <TableCell>{client.name}</TableCell>{" "}
@@ -457,12 +655,28 @@ export default function AdminHomePage() {
                           {/*<TableCell> <Button variant="outline" size="sm" onClick={() => handleSelectUserCustomer(client)} > <Users className="w-4 h-4 mr-2" /> Selecionar </Button> </TableCell> */}{" "}
                         </TableRow>
                       ))}{" "}
+                      {usersDisplayed < 500 &&
+                        filteredUsers.length > usersDisplayed && (
+                          <div className="text-center w-full mt-4 flex itens-center ">
+                            <Button onClick={handleLoadMoreUsers}>
+                              Carregar mais
+                            </Button>
+                          </div>
+                        )}
                     </TableBody>
                   </Table>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
+          <UserManagement
+            setIsAddDocumentOpen={setIsAddDocumentOpen}
+            selectedUser={selectedUser}
+            setSelectedUser={setSelectedUser}
+            documents={documents}
+            setDocuments={setDocuments}
+            users={clients}
+          />
 
           <TabsContent value="logs">
             <Card>
@@ -839,6 +1053,14 @@ export default function AdminHomePage() {
                   id="clientName"
                   placeholder="Digite o nome do cliente"
                   required
+                  value={editingClient?.name || ""}
+                  onChange={(e) =>
+                    setEditingClient(
+                      editingClient
+                        ? { ...editingClient, name: e.target.value }
+                        : null
+                    )
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -848,11 +1070,19 @@ export default function AdminHomePage() {
                   type="email"
                   placeholder="cliente@example.com"
                   required
+                  value={editingClient?.email || ""}
+                  onChange={(e) =>
+                    setEditingClient(
+                      editingClient
+                        ? { ...editingClient, email: e.target.value }
+                        : null
+                    )
+                  }
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 mt-2">
               <Label htmlFor="editClientPhone">Telefone do Usuário</Label>
               <Input
                 id="editClientPhone"
@@ -868,6 +1098,72 @@ export default function AdminHomePage() {
                 }
               />
             </div>
+
+            <div className="space-y-2 mt-2">
+              <Label htmlFor="editClientRg">RG</Label>
+              <Input
+                id="editClientRg"
+                placeholder="Digite o rg"
+                value={editingClient?.rg || ""}
+                onChange={(e) =>
+                  setEditingClient(
+                    editingClient
+                      ? { ...editingClient, rg: e.target.value }
+                      : null
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2 mt-2">
+              <Label htmlFor="editClientCnpj">CNPJ</Label>
+              <Input
+                id="editClientCnpj"
+                placeholder="Digite o cnpj"
+                value={editingClient?.cnpj || ""}
+                onChange={(e) =>
+                  setEditingClient(
+                    editingClient
+                      ? { ...editingClient, cnpj: e.target.value }
+                      : null
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2 mt-2">
+              <Label htmlFor="editClientPassword">Senha</Label>
+              <Input
+                type="password"
+                id="editClientPassword"
+                placeholder="Digite a senha"
+                value={editingClient?.password}
+                onChange={(e) =>
+                  setEditingClient(
+                    editingClient
+                      ? { ...editingClient, password: e.target.value }
+                      : null
+                  )
+                }
+              />
+            </div>
+            <div className="space-y-2 mt-2">
+              <Label htmlFor="editClientConfirmPassword">
+                Confirme a senha
+              </Label>
+              <Input
+                type="password"
+                id="editClientConfirmPassword"
+                placeholder="Confirme a senha"
+                value={editingClient?.confirmPassword}
+                onChange={(e) =>
+                  setEditingClient(
+                    editingClient
+                      ? { ...editingClient, confirmPassword: e.target.value }
+                      : null
+                  )
+                }
+              />
+            </div>
+
             <DialogFooter className="mt-4">
               <Button type="submit">Adicionar Usuário</Button>
             </DialogFooter>
@@ -932,7 +1228,6 @@ export default function AdminHomePage() {
                         : null
                     )
                   }
-                  required
                 />
               </div>
               <div className="space-y-2">
@@ -948,7 +1243,68 @@ export default function AdminHomePage() {
                         : null
                     )
                   }
-                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editClientPhone">Telefone</Label>
+                <Input
+                  id="editClientPhone"
+                  placeholder="Digite o telefone"
+                  value={editingClient?.phone || ""}
+                  onChange={(e) =>
+                    setEditingClient(
+                      editingClient
+                        ? { ...editingClient, phone: e.target.value }
+                        : null
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editClientCod">COD</Label>
+                <Input
+                  id="editClientCod"
+                  placeholder="Digite o cod"
+                  value={editingClient?.cod || ""}
+                  onChange={(e) =>
+                    setEditingClient(
+                      editingClient
+                        ? { ...editingClient, cod: e.target.value }
+                        : null
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editClientPassword">Nova Senha</Label>
+                <Input
+                  type="password"
+                  id="editClientPassword"
+                  placeholder="Digite a nova senha"
+                  value={editingClient?.password}
+                  onChange={(e) =>
+                    setEditingClient(
+                      editingClient
+                        ? { ...editingClient, password: e.target.value }
+                        : null
+                    )
+                  }
+                />
+                <Label htmlFor="editClientConfirmPassword">
+                  Confirme a nova senha
+                </Label>
+                <Input
+                  type="password"
+                  id="editClientConfirmPassword"
+                  placeholder="Confirme a nova senha"
+                  value={editingClient?.confirmPassword}
+                  onChange={(e) =>
+                    setEditingClient(
+                      editingClient
+                        ? { ...editingClient, confirmPassword: e.target.value }
+                        : null
+                    )
+                  }
                 />
               </div>
             </div>
@@ -1077,6 +1433,76 @@ export default function AdminHomePage() {
               Excluir Usuário
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAddDocumentOpen} onOpenChange={setIsAddDocumentOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Novo Documento</DialogTitle>
+            <DialogDescription>
+              Adicione um novo documento para o cliente selecionado.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddDocument}>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="documentName">Nome do Documento</Label>
+                <Input
+                  id="documentName"
+                  placeholder="Digite o nome do documento"
+                  required
+                  value={newDocumentName}
+                  onChange={(e) => setNewDocumentName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="documentFolder">Pasta</Label>
+                <Select
+                  value={newDocumentFolder}
+                  onValueChange={(value) => setNewDocumentFolder(value)}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a pasta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {foldersToAcess.all.map((folder) => (
+                      <SelectItem key={folder} value={folder}>
+                        {folderFormat[folder]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="documentDescription">Descrição</Label>
+                <Input
+                  id="documentDescription"
+                  placeholder="Digite uma descrição para o documento"
+                  required
+                  value={newDocumentDescription}
+                  onChange={(e) => setNewDocumentDescription(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="documentFile">Arquivo</Label>
+                <Input
+                  id="documentFile"
+                  type="file"
+                  required
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      setNewDocumentFile(e.target.files[0]);
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button type="submit">Adicionar Documento</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

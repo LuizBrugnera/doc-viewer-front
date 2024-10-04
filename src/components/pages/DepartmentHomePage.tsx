@@ -61,7 +61,11 @@ export default function DepartmentHomePage({
   const [users, setUsers] = useState<User[]>([]);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [documentSearchQuery, setDocumentSearchQuery] = useState("");
+  const [usersDisplayed, setUsersDisplayed] = useState(10);
 
+  const handleLoadMoreUsers = () => {
+    setUsersDisplayed((prev) => Math.min(prev + 50, 500));
+  };
   const handleSelectUser = (client: User) => {
     setSelectedUser(client);
   };
@@ -258,22 +262,32 @@ export default function DepartmentHomePage({
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredUsers.slice(0, 10).map((client) => (
-                            <TableRow key={client.id}>
-                              <TableCell>{client.name}</TableCell>
-                              <TableCell>{client.email}</TableCell>
-                              <TableCell>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleSelectUser(client)}
-                                >
-                                  <Users className="w-4 h-4 mr-2" />
-                                  Selecionar
+                          {filteredUsers
+                            .slice(0, usersDisplayed)
+                            .map((client) => (
+                              <TableRow key={client.id}>
+                                <TableCell>{client.name}</TableCell>
+                                <TableCell>{client.email}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSelectUser(client)}
+                                  >
+                                    <Users className="w-4 h-4 mr-2" />
+                                    Selecionar
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          {usersDisplayed < 500 &&
+                            filteredUsers.length > usersDisplayed && (
+                              <div className="text-center w-full mt-4 flex itens-center ">
+                                <Button onClick={handleLoadMoreUsers}>
+                                  Carregar mais
                                 </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                              </div>
+                            )}
                         </TableBody>
                       </Table>
                     </div>

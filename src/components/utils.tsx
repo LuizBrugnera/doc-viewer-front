@@ -21,6 +21,21 @@ export const foldersToAcess = {
     "relatorioEventoS2210",
   ],
   vendas: ["contratos", "ordensServico"], // poder vir do db
+  all: [
+    "boletos",
+    "notasFiscais",
+    "recibos",
+    "laudosPCMSO",
+    "laudosPGR",
+    "laudosLTCAT",
+    "laudosDiversos",
+    "relatorioFaturamento",
+    "relatorioEventoS2240",
+    "relatorioEventoS2220",
+    "relatorioEventoS2210",
+    "contratos",
+    "ordensServico",
+  ],
 } as { [key: string]: string[] };
 
 export const folderFormat = {
