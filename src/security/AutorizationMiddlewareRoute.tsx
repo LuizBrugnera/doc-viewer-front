@@ -6,6 +6,7 @@ import ClientHomePage from "@/components/pages/ClientHomePage";
 import DepartmentHomePage from "@/components/pages/DepartmentHomePage";
 import { foldersToAcess } from "@/components/utils";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { ExamesPage } from "@/components/pages/ExamesPage";
 
 const AutorizationMiddlewareRoute: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -18,6 +19,8 @@ const AutorizationMiddlewareRoute: React.FC = () => {
       return (
         <DepartmentHomePage foldersAcess={foldersToAcess[user?.department]} />
       );
+    } else if (user?.role === "exames") {
+      return <ExamesPage />;
     }
     return <ClientHomePage />;
   };

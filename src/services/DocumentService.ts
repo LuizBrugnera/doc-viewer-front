@@ -45,15 +45,20 @@ export const DocumentService = {
 
   async downloadFile(
     token: string,
-    documentId: number
+    documentId: number,
+    userId?: number
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<AxiosResponse<any, any>> {
-    const response = await axios.get(`${API_URL}/download-file/${documentId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      responseType: "blob",
-    });
+    const response = await axios.get(
+      `${API_URL}/download-file/${documentId}/${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+
+        responseType: "blob",
+      }
+    );
 
     return response;
   },

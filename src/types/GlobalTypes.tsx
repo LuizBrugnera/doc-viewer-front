@@ -4,7 +4,7 @@ export interface User {
   email: string;
   password: string;
   department: string;
-  role: "admin" | "user" | "department";
+  role: "admin" | "user" | "department" | "exames";
   rg?: string;
   cpf?: string;
   cnpj?: string;
@@ -37,24 +37,12 @@ export interface LoginData {
   password: string;
 }
 
-export interface Department {
-  id: number;
-  name: string;
-  email: string;
-}
-
-export interface UserCustomer {
-  id: number;
-  departmentId: number;
-  name: string;
-  email: string;
-}
-
 export interface Log {
   id: number;
-  departmentId: number;
+  description: string;
+  userId: number;
   action: string;
-  timestamp: string;
+  date: string;
 }
 
 export interface Notification {
@@ -63,6 +51,11 @@ export interface Notification {
   description: string;
   date: string;
   viewed: boolean;
+}
+
+export interface DefaultModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export interface UserInfo {

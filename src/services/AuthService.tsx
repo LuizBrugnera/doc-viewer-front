@@ -9,6 +9,16 @@ export const AuthService = {
     return response.data;
   },
 
+  async loginCpf(data: { cpf: string; password: string }): Promise<string> {
+    const response = await axios.post(`${API_URL}/login-cpf`, data);
+    return response.data;
+  },
+
+  async loginCnpj(data: { cnpj: string; password: string }): Promise<string> {
+    const response = await axios.post(`${API_URL}/login-cnpj`, data);
+    return response.data;
+  },
+
   async register(data: RegisterData): Promise<string> {
     const response = await axios.post(`${API_URL}/register`, data);
     return response.data;

@@ -24,6 +24,7 @@ import {
   isUploadArea,
 } from "./utils";
 import { Category, File } from "@/types/GlobalTypes";
+import LoadingModal from "./LoadingModal";
 
 interface Folder {
   name: string;
@@ -43,6 +44,7 @@ export default function FolderSistemToUpload({
   const [activePath, setActivePath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
+  const [loading, setLoading] = useState(false);
   const activePathRef = useRef(activePath);
 
   useEffect(() => {
@@ -153,6 +155,7 @@ export default function FolderSistemToUpload({
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleUpload(e.dataTransfer.files);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,19 +170,23 @@ export default function FolderSistemToUpload({
       return;
     }
 
+    setLoading(true);
+
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
       formData.append("document", files[i]);
       formData.append("folder", activePathRef.current[1]);
       formData.append("name", files[i].name);
+
       try {
         await DocumentService.uploadFileFast(token, formData);
+        console.log("acerto com o nome", files[i].name);
       } catch (error) {
         console.error("Erro ao fazer upload dos arquivos:", error);
-        alert("Erro ao fazer upload dos arquivos.");
+        console.log(" erro com o name", files[i].name);
       }
     }
-
+    setLoading(false);
     try {
       alert("Arquivos enviados com sucesso!");
     } catch (error) {
@@ -193,6 +200,7 @@ export default function FolderSistemToUpload({
 
     return (
       <div className="grid grid-cols-3 gap-4">
+        <LoadingModal isLoading={loading} text="Carregando..." />
         {filteredContent.map((item, index) => (
           <div
             key={index}

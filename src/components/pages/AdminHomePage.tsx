@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search,
-  Users,
   FileText,
   Plus,
   Edit,
@@ -45,106 +44,209 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Department, Log, UserCustomer } from "@/types/GlobalTypes";
+import { Log, User } from "@/types/GlobalTypes";
+import useAuth from "@/security/UseAuth";
+import { UserService } from "@/services/UserService";
+import { LogService } from "@/services/LogService";
+import { folderUpFoldersFormat, formatMySqlToBrDate } from "../utils";
+import FolderSistemToUpload from "../FolderSistemToUpload";
+import { ScrollArea } from "../ui/scroll-area";
+
+type AddDepartmentForm = {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
+};
+
+type UpdateDepartmentForm = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirmPassword: string;
+  department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
+};
 
 export default function AdminHomePage() {
-  const [selectedDepartment, setSelectedDepartment] =
-    useState<Department | null>(null);
+  const { token } = useAuth();
+  const [selectedDepartment, setSelectedDepartment] = useState<User | null>(
+    null
+  );
   const [isAddDepartmentOpen, setIsAddDepartmentOpen] = useState(false);
   const [isEditDepartmentOpen, setIsEditDepartmentOpen] = useState(false);
+  const [isDataDepartmentOpen, setIsDataDepartmentOpen] = useState(false);
+  const [seeDataDepartment, setSeeDataDepartment] = useState<User | null>(null);
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
-  const [editingDepartment, setEditingDepartment] = useState<Department | null>(
-    null
-  );
-  const [editingClient, setEditingClient] = useState<UserCustomer | null>(null);
+  const [editingDepartment, setEditingDepartment] =
+    useState<UpdateDepartmentForm | null>(null);
+  const [editingClient, setEditingClient] = useState<User | null>(null);
   const [isDeleteDepartmentOpen, setIsDeleteDepartmentOpen] = useState(false);
   const [isDeleteClientOpen, setIsDeleteClientOpen] = useState(false);
-  const [deletingDepartment, setDeletingDepartment] =
-    useState<Department | null>(null);
-  const [deletingClient, setDeletingClient] = useState<UserCustomer | null>(
+  const [deletingDepartment, setDeletingDepartment] = useState<User | null>(
     null
   );
-  // truncate table to tests
-  const companies: Department[] = [
-    { id: 1, name: "Empresa A", email: "empresaa@example.com" },
-    { id: 2, name: "Empresa B", email: "empresab@example.com" },
-  ];
-  // truncate table to tests
-  const clients: UserCustomer[] = [
-    {
-      id: 1,
-      departmentId: 1,
-      name: "Cliente A1",
-      email: "clientea1@example.com",
-    },
-    {
-      id: 2,
-      departmentId: 1,
-      name: "Cliente A2",
-      email: "clientea2@example.com",
-    },
-    {
-      id: 3,
-      departmentId: 2,
-      name: "Cliente B1",
-      email: "clienteb1@example.com",
-    },
-  ];
-  // truncate table to tests
-  const logs: Log[] = [
-    {
-      id: 1,
-      departmentId: 1,
-      action: "Login",
-      timestamp: "2023-06-01 10:00:00",
-    },
-    {
-      id: 2,
-      departmentId: 1,
-      action: "Documento adicionado",
-      timestamp: "2023-06-01 11:30:00",
-    },
-    {
-      id: 3,
-      departmentId: 2,
-      action: "Cliente adicionado",
-      timestamp: "2023-06-02 09:15:00",
-    },
-  ];
+  const [deletingClient, setDeletingClient] = useState<User | null>(null);
+  const [clientSearchQuery, setClientSearchQuery] = useState("");
+  const [departments, setDepartments] = useState<User[]>([]);
+  const [clients, setClients] = useState<User[]>([]);
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [addDepartmentForm, setAddDepartmentForm] =
+    useState<AddDepartmentForm | null>({
+      name: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      department: "financeiro",
+    });
+  const filteredUsers = clients.filter(
+    (client) =>
+      client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
+      client.email.toLowerCase().includes(clientSearchQuery.toLowerCase())
+  );
+  const fetchDepartments = async () => {
+    if (!token) {
+      alert("Usuário não autenticado.");
+      return;
+    }
+    console.log("Fetching departments");
+    const data = await UserService.findAllUserDepartaments(token);
+    setDepartments(data);
+  };
+  useEffect(() => {
+    fetchDepartments();
+  }, [token]);
 
-  const handleSelectDepartment = (department: Department | null) => {
+  const fetchClients = async () => {
+    try {
+      if (!token) {
+        alert("Usuário não autenticado.");
+        return;
+      }
+
+      const data = await UserService.findByDepartment(token);
+      setClients(data);
+    } catch (error) {
+      console.error("Erro ao buscar clientes:", error);
+      alert("Erro ao buscar clientes.");
+    }
+  };
+
+  useEffect(() => {
+    fetchClients();
+  }, [token]);
+
+  const handleSelectDepartment = (department: User | null) => {
     setSelectedDepartment(department);
+  };
+
+  const handleSelectDepartmentData = (department: User | null) => {
+    setSeeDataDepartment(department);
+    setIsDataDepartmentOpen(true);
   };
 
   const handleAddDepartment = (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement department addition logic here
+    if (addDepartmentForm) {
+      if (addDepartmentForm.password !== addDepartmentForm.confirmPassword) {
+        alert("As senhas não coincidem.");
+        return;
+      }
+
+      const data = {
+        name: addDepartmentForm.name,
+        email: addDepartmentForm.email,
+        password: addDepartmentForm.password,
+        department: addDepartmentForm.department,
+        phone: addDepartmentForm.phone,
+        role: "department",
+      };
+
+      if (!token) {
+        alert("Token expirado! Logue novamente.");
+        return;
+      }
+      UserService.createUser(token, data);
+
+      setTimeout(() => {
+        fetchDepartments();
+      }, 3000);
+
+      setAddDepartmentForm(null);
+      setIsAddDepartmentOpen(false);
+    }
     setIsAddDepartmentOpen(false);
   };
 
-  const handleEditDepartment = (department: Department) => {
-    setEditingDepartment(department);
+  const handleEditDepartment = (department: User) => {
+    setEditingDepartment({
+      id: +department.id,
+      name: department.name,
+      email: department.email,
+      phone: department.phone || "",
+      password: "",
+      confirmPassword: "",
+      department: department.department,
+    });
     setIsEditDepartmentOpen(true);
   };
 
   const handleUpdateDepartment = (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement department update logic here
+    if (editingDepartment) {
+      if (editingDepartment.password !== editingDepartment.confirmPassword) {
+        alert("As senhas não coincidem.");
+        return;
+      }
+
+      const data = {
+        id: editingDepartment.id,
+        name: editingDepartment.name,
+        email: editingDepartment.email,
+        password: editingDepartment.password,
+        department: editingDepartment.department,
+        phone: editingDepartment.phone,
+        role: "department",
+      };
+
+      if (!token) {
+        alert("Token expirado! Logue novamente.");
+        return;
+      }
+      UserService.updateUserByAdmin(token, data);
+
+      setTimeout(() => {
+        fetchDepartments();
+      }, 3000);
+
+      setEditingDepartment(null);
+      setIsEditDepartmentOpen(false);
+    }
     setIsEditDepartmentOpen(false);
   };
 
-  const handleDeleteDepartment = (department: Department) => {
+  const handleDeleteDepartment = (department: User) => {
     setDeletingDepartment(department);
     setIsDeleteDepartmentOpen(true);
   };
 
   const confirmDeleteDepartment = () => {
     if (deletingDepartment) {
-      // Implement department deletion logic here
-      console.log(`Deleting department with ID ${deletingDepartment.id}`);
-      setIsDeleteDepartmentOpen(false);
-      setDeletingDepartment(null);
+      if (!token) {
+        alert("Token expirado! Logue novamente.");
+        return;
+      }
+
+      UserService.deleteUser(token, +deletingDepartment.id).then(() => {
+        setDeletingDepartment(null);
+        setIsDeleteDepartmentOpen(false);
+        fetchDepartments();
+      });
     }
   };
 
@@ -154,7 +256,7 @@ export default function AdminHomePage() {
     setIsAddClientOpen(false);
   };
 
-  const handleEditClient = (client: UserCustomer) => {
+  const handleEditClient = (client: User) => {
     setEditingClient(client);
     setIsEditClientOpen(true);
   };
@@ -165,7 +267,7 @@ export default function AdminHomePage() {
     setIsEditClientOpen(false);
   };
 
-  const handleDeleteClient = (client: UserCustomer) => {
+  const handleDeleteClient = (client: User) => {
     setDeletingClient(client);
     setIsDeleteClientOpen(true);
   };
@@ -179,23 +281,42 @@ export default function AdminHomePage() {
     }
   };
 
+  useEffect(() => {
+    const fetchLogsOfDepartment = async () => {
+      if (!token) {
+        alert("Usuário não autenticado.");
+        return;
+      }
+
+      if (!selectedDepartment) {
+        return;
+      }
+      console.log(selectedDepartment);
+      const data = await LogService.findByUser(token, +selectedDepartment.id);
+      console.log(data);
+      setLogs(data);
+    };
+    fetchLogsOfDepartment();
+  }, [selectedDepartment, token]);
+
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Painel de Administração</h1>
-        <Tabs defaultValue="companies" className="space-y-4">
+        <Tabs defaultValue="departments" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="companies">Empresas</TabsTrigger>
-            <TabsTrigger value="clients">Clientes</TabsTrigger>
+            <TabsTrigger value="departments">Departamentos</TabsTrigger>
+            <TabsTrigger value="clients">Usuários</TabsTrigger>
             <TabsTrigger value="logs">Logs</TabsTrigger>
+            <TabsTrigger value="upload">Enviar Arquivos</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="companies">
+          <TabsContent value="departments">
             <Card>
               <CardHeader>
-                <CardTitle>Gerenciar Empresas</CardTitle>
+                <CardTitle>Gerenciar Departamentos</CardTitle>
                 <CardDescription>
-                  Adicione, edite ou remova empresas
+                  Adicione, edite ou remova departamentos
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -204,13 +325,13 @@ export default function AdminHomePage() {
                     <div className="flex items-center space-x-2">
                       <Search className="w-4 h-4 text-muted-foreground" />
                       <Input
-                        placeholder="Buscar empresas..."
+                        placeholder="Buscar departamentos..."
                         className="w-64"
                       />
                     </div>
                     <Button onClick={() => setIsAddDepartmentOpen(true)}>
                       <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Empresa
+                      Adicionar Departamento
                     </Button>
                   </div>
                   <Table>
@@ -218,21 +339,25 @@ export default function AdminHomePage() {
                       <TableRow>
                         <TableHead>Nome</TableHead>
                         <TableHead>Email</TableHead>
+                        <TableHead>Departamento</TableHead>
                         <TableHead>Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {companies.map((department) => (
+                      {departments.map((department) => (
                         <TableRow key={department.id}>
                           <TableCell>{department.name}</TableCell>
                           <TableCell>{department.email}</TableCell>
+                          <TableCell>
+                            {folderUpFoldersFormat[department.department]}
+                          </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() =>
-                                  handleSelectDepartment(department)
+                                  handleSelectDepartmentData(department)
                                 }
                               >
                                 <Eye className="w-4 h-4" />
@@ -267,7 +392,7 @@ export default function AdminHomePage() {
           <TabsContent value="clients">
             <Card>
               <CardHeader>
-                <CardTitle>Gerenciar Clientes</CardTitle>
+                <CardTitle>Gerenciar Usuários</CardTitle>
                 <CardDescription>
                   Visualize e gerencie clientes por empresa
                 </CardDescription>
@@ -275,83 +400,65 @@ export default function AdminHomePage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Select
-                      onValueChange={(value) =>
-                        handleSelectDepartment(
-                          companies.find((c) => c.id === parseInt(value)) ||
-                            null
-                        )
-                      }
-                    >
-                      <SelectTrigger className="w-64">
-                        <SelectValue placeholder="Selecione uma empresa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companies.map((department) => (
-                          <SelectItem
-                            key={department.id}
-                            value={department.id.toString()}
-                          >
-                            {department.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      onClick={() => setIsAddClientOpen(true)}
-                      disabled={!selectedDepartment}
-                    >
+                    <div className="flex items-center space-x-2">
+                      <Search className="w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar clientes..."
+                        className="flex-grow"
+                        value={clientSearchQuery}
+                        onChange={(e) => setClientSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <Button onClick={() => setIsAddClientOpen(true)}>
                       <Plus className="w-4 h-4 mr-2" />
-                      Adicionar Cliente
+                      Adicionar Usuário
                     </Button>
                   </div>
-                  {selectedDepartment ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Ações</TableHead>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>CNPJ</TableHead>
+                        <TableHead>Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {" "}
+                      {filteredUsers.slice(0, 50).map((client) => (
+                        <TableRow key={client.id}>
+                          {" "}
+                          <TableCell>{client.name}</TableCell>{" "}
+                          <TableCell>{client.email}</TableCell>{" "}
+                          <TableCell>{client.cnpj}</TableCell>{" "}
+                          <TableCell>
+                            {" "}
+                            <div className="flex space-x-2">
+                              {" "}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditClient(client)}
+                              >
+                                {" "}
+                                <Edit className="w-4 h-4" />{" "}
+                              </Button>{" "}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteClient(client)}
+                              >
+                                {" "}
+                                <Trash className="w-4 h-4" />{" "}
+                              </Button>{" "}
+                            </div>{" "}
+                          </TableCell>
+                          {/*<TableCell> <Button variant="outline" size="sm" onClick={() => handleSelectUserCustomer(client)} > <Users className="w-4 h-4 mr-2" /> Selecionar </Button> </TableCell> */}{" "}
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {clients
-                          .filter(
-                            (client) =>
-                              client.departmentId === selectedDepartment.id
-                          )
-                          .map((client) => (
-                            <TableRow key={client.id}>
-                              <TableCell>{client.name}</TableCell>
-                              <TableCell>{client.email}</TableCell>
-                              <TableCell>
-                                <div className="flex space-x-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEditClient(client)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDeleteClient(client)}
-                                  >
-                                    <Trash className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <div className="text-center text-muted-foreground">
-                      <Users className="w-12 h-12 mx-auto mb-4" />
-                      <p>Selecione uma empresa para ver seus clientes</p>
-                    </div>
-                  )}
+                      ))}{" "}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
@@ -360,9 +467,9 @@ export default function AdminHomePage() {
           <TabsContent value="logs">
             <Card>
               <CardHeader>
-                <CardTitle>Logs das Empresas</CardTitle>
+                <CardTitle>Logs dos Departamentos</CardTitle>
                 <CardDescription>
-                  Visualize os logs de atividade das empresas
+                  Visualize os logs de atividade dos departamentos
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -370,7 +477,8 @@ export default function AdminHomePage() {
                   <Select
                     onValueChange={(value) =>
                       handleSelectDepartment(
-                        companies.find((c) => c.id === parseInt(value)) || null
+                        departments.find((c) => +c.id === parseInt(value)) ||
+                          null
                       )
                     }
                   >
@@ -378,7 +486,7 @@ export default function AdminHomePage() {
                       <SelectValue placeholder="Selecione uma empresa" />
                     </SelectTrigger>
                     <SelectContent>
-                      {companies.map((department) => (
+                      {departments.map((department) => (
                         <SelectItem
                           key={department.id}
                           value={department.id.toString()}
@@ -394,19 +502,19 @@ export default function AdminHomePage() {
                         <TableRow>
                           <TableHead>Ação</TableHead>
                           <TableHead>Data e Hora</TableHead>
+                          <TableHead>Descrição</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {logs
-                          .filter(
-                            (log) => log.departmentId === selectedDepartment.id
-                          )
-                          .map((log) => (
-                            <TableRow key={log.id}>
-                              <TableCell>{log.action}</TableCell>
-                              <TableCell>{log.timestamp}</TableCell>
-                            </TableRow>
-                          ))}
+                        {logs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell>{log.action}</TableCell>
+                            <TableCell>
+                              {formatMySqlToBrDate(log.date)}
+                            </TableCell>
+                            <TableCell>{log.description}</TableCell>
+                          </TableRow>
+                        ))}
                       </TableBody>
                     </Table>
                   ) : (
@@ -419,14 +527,27 @@ export default function AdminHomePage() {
               </CardContent>
             </Card>
           </TabsContent>
+          <TabsContent value="upload">
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload em massa de Arquivos</CardTitle>
+                <CardDescription>
+                  Arraste e solte arquivos ou clique para selecionar
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FolderSistemToUpload />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </main>
 
-      {/* Add Department Dialog */}
+      {/* Add User Dialog */}
       <Dialog open={isAddDepartmentOpen} onOpenChange={setIsAddDepartmentOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Nova Empresa</DialogTitle>
+            <DialogTitle>Adicionar Nova Departamento</DialogTitle>
             <DialogDescription>
               Preencha os detalhes da nova empresa.
             </DialogDescription>
@@ -434,38 +555,138 @@ export default function AdminHomePage() {
           <form onSubmit={handleAddDepartment}>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="departmentName">Nome da Empresa</Label>
+                <Label htmlFor="departmentName">Nome da Departamento*</Label>
                 <Input
                   id="departmentName"
                   placeholder="Digite o nome da empresa"
                   required
+                  value={addDepartmentForm?.name || ""}
+                  onChange={(e) =>
+                    setAddDepartmentForm(
+                      addDepartmentForm
+                        ? { ...addDepartmentForm, name: e.target.value }
+                        : null
+                    )
+                  }
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="departmentEmail">Email da Empresa</Label>
+                <Label htmlFor="departmentEmail">Email da Departamento*</Label>
                 <Input
                   id="departmentEmail"
                   type="email"
                   placeholder="empresa@example.com"
                   required
+                  value={addDepartmentForm?.email || ""}
+                  onChange={(e) =>
+                    setAddDepartmentForm(
+                      addDepartmentForm
+                        ? { ...addDepartmentForm, email: e.target.value }
+                        : null
+                    )
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="departmentPhone">
+                  Telefone da Departamento
+                </Label>
+                <Input
+                  id="departmentPhone"
+                  type="text"
+                  placeholder="(99) 999999999 OPCIONAL"
+                  value={addDepartmentForm?.phone || ""}
+                  onChange={(e) =>
+                    setAddDepartmentForm(
+                      addDepartmentForm
+                        ? { ...addDepartmentForm, phone: e.target.value }
+                        : null
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="departmentDepartment">Departamento*</Label>
+                <Select
+                  value={addDepartmentForm?.department || ""}
+                  onValueChange={(value) =>
+                    setAddDepartmentForm(
+                      addDepartmentForm
+                        ? { ...addDepartmentForm, department: value }
+                        : null
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o departamento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="financeiro">Financeiro</SelectItem>
+                    <SelectItem value="documentosTecnicos">
+                      Documentos Tecnicos
+                    </SelectItem>
+                    <SelectItem value="faturamento">Faturamento</SelectItem>
+                    <SelectItem value="esocial">E-social</SelectItem>
+                    <SelectItem value="vendas">Vendas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="departmentPassword">
+                  Senha da Departamento*
+                </Label>
+                <Input
+                  id="departmentPassword"
+                  type="password"
+                  placeholder="********"
+                  value={addDepartmentForm?.password || ""}
+                  onChange={(e) =>
+                    setAddDepartmentForm(
+                      addDepartmentForm
+                        ? { ...addDepartmentForm, password: e.target.value }
+                        : null
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="departmentConfirmPassword">
+                  Confirme a Senha da Departamento*
+                </Label>
+                <Input
+                  id="departmentConfirmPassword"
+                  type="password"
+                  placeholder="********"
+                  value={addDepartmentForm?.confirmPassword || ""}
+                  onChange={(e) =>
+                    setAddDepartmentForm(
+                      addDepartmentForm
+                        ? {
+                            ...addDepartmentForm,
+                            confirmPassword: e.target.value,
+                          }
+                        : null
+                    )
+                  }
                 />
               </div>
             </div>
             <DialogFooter className="mt-4">
-              <Button type="submit">Adicionar Empresa</Button>
+              <Button type="submit">Adicionar Departamento</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Department Dialog */}
+      {/* Edit User Dialog */}
       <Dialog
         open={isEditDepartmentOpen}
         onOpenChange={setIsEditDepartmentOpen}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Empresa</DialogTitle>
+            <DialogTitle>Editar Departamento</DialogTitle>
             <DialogDescription>
               Atualize as informações da empresa.
             </DialogDescription>
@@ -473,7 +694,7 @@ export default function AdminHomePage() {
           <form onSubmit={handleUpdateDepartment}>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="editDepartmentName">Nome da Empresa</Label>
+                <Label htmlFor="editDepartmentName">Nome da Departamento</Label>
                 <Input
                   id="editDepartmentName"
                   placeholder="Digite o nome da empresa"
@@ -489,7 +710,9 @@ export default function AdminHomePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="editDepartmentEmail">Email da Empresa</Label>
+                <Label htmlFor="editDepartmentEmail">
+                  Email da Departamento
+                </Label>
                 <Input
                   id="editDepartmentEmail"
                   type="email"
@@ -504,20 +727,106 @@ export default function AdminHomePage() {
                   }
                   required
                 />
+
+                <div className="space-y-2">
+                  <Label htmlFor="editDepartmentPhone">
+                    Telefone da Departamento
+                  </Label>
+                  <Input
+                    id="editDepartmentPhone"
+                    type="text"
+                    placeholder="(99) 999999999 OPCIONAL"
+                    value={editingDepartment?.phone || ""}
+                    onChange={(e) =>
+                      setEditingDepartment(
+                        editingDepartment
+                          ? { ...editingDepartment, phone: e.target.value }
+                          : null
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editDepartmentDepartment">
+                    Departamento da Departamento
+                  </Label>
+                  <Select
+                    value={editingDepartment?.department || ""}
+                    onValueChange={(value) =>
+                      setEditingDepartment(
+                        editingDepartment
+                          ? { ...editingDepartment, department: value }
+                          : null
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o departamento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="financeiro">Financeiro</SelectItem>
+                      <SelectItem value="documentosTecnicos">
+                        Documentos Tecnicos
+                      </SelectItem>
+                      <SelectItem value="faturamento">Faturamento</SelectItem>
+                      <SelectItem value="esocial">E-social</SelectItem>
+                      <SelectItem value="vendas">Vendas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editDepartmentPassword">
+                    Senha da Departamento*
+                  </Label>
+                  <Input
+                    id="editDepartmentPassword"
+                    type="password"
+                    placeholder="********"
+                    value={editingDepartment?.password || ""}
+                    onChange={(e) =>
+                      setEditingDepartment(
+                        editingDepartment
+                          ? { ...editingDepartment, password: e.target.value }
+                          : null
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editDepartmentConfirmPassword">
+                    Confirme a Senha da Departamento*
+                  </Label>
+                  <Input
+                    id="editDepartmentConfirmPassword"
+                    type="password"
+                    placeholder="********"
+                    value={editingDepartment?.confirmPassword || ""}
+                    onChange={(e) =>
+                      setEditingDepartment(
+                        editingDepartment
+                          ? {
+                              ...editingDepartment,
+                              confirmPassword: e.target.value,
+                            }
+                          : null
+                      )
+                    }
+                  />
+                </div>
               </div>
             </div>
             <DialogFooter className="mt-4">
-              <Button type="submit">Atualizar Empresa</Button>
+              <Button type="submit">Atualizar Departamento</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Add UserCustomer Dialog */}
+      {/* Add User Dialog */}
       <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Novo Cliente</DialogTitle>
+            <DialogTitle>Adicionar Novo Usuário</DialogTitle>
             <DialogDescription>
               Preencha os detalhes do novo cliente.
             </DialogDescription>
@@ -525,7 +834,7 @@ export default function AdminHomePage() {
           <form onSubmit={handleAddClient}>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="clientName">Nome do Cliente</Label>
+                <Label htmlFor="clientName">Nome do Usuário</Label>
                 <Input
                   id="clientName"
                   placeholder="Digite o nome do cliente"
@@ -533,7 +842,7 @@ export default function AdminHomePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="clientEmail">Email do Cliente</Label>
+                <Label htmlFor="clientEmail">Email do Usuário</Label>
                 <Input
                   id="clientEmail"
                   type="email"
@@ -542,18 +851,35 @@ export default function AdminHomePage() {
                 />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editClientPhone">Telefone do Usuário</Label>
+              <Input
+                id="editClientPhone"
+                type="text"
+                placeholder="(99) 999999999 OPCIONAL"
+                value={editingClient?.phone || ""}
+                onChange={(e) =>
+                  setEditingClient(
+                    editingClient
+                      ? { ...editingClient, phone: e.target.value }
+                      : null
+                  )
+                }
+              />
+            </div>
             <DialogFooter className="mt-4">
-              <Button type="submit">Adicionar Cliente</Button>
+              <Button type="submit">Adicionar Usuário</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Edit UserCustomer Dialog */}
+      {/* Edit User Dialog */}
       <Dialog open={isEditClientOpen} onOpenChange={setIsEditClientOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Cliente</DialogTitle>
+            <DialogTitle>Editar Usuário</DialogTitle>
             <DialogDescription>
               Atualize as informações do cliente.
             </DialogDescription>
@@ -561,7 +887,7 @@ export default function AdminHomePage() {
           <form onSubmit={handleUpdateClient}>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="editClientName">Nome do Cliente</Label>
+                <Label htmlFor="editClientName">Nome do Usuário</Label>
                 <Input
                   id="editClientName"
                   placeholder="Digite o nome do cliente"
@@ -577,7 +903,7 @@ export default function AdminHomePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="editClientEmail">Email do Cliente</Label>
+                <Label htmlFor="editClientEmail">Email do Usuário</Label>
                 <Input
                   id="editClientEmail"
                   type="email"
@@ -593,22 +919,54 @@ export default function AdminHomePage() {
                   required
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="editClientCnpj">CNPJ</Label>
+                <Input
+                  id="editClientCnpj"
+                  placeholder="Digite o cnpj"
+                  value={editingClient?.cnpj || ""}
+                  onChange={(e) =>
+                    setEditingClient(
+                      editingClient
+                        ? { ...editingClient, cnpj: e.target.value }
+                        : null
+                    )
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editClientRg">RG</Label>
+                <Input
+                  id="editClientRg"
+                  placeholder="Digite o rg"
+                  value={editingClient?.rg || ""}
+                  onChange={(e) =>
+                    setEditingClient(
+                      editingClient
+                        ? { ...editingClient, rg: e.target.value }
+                        : null
+                    )
+                  }
+                  required
+                />
+              </div>
             </div>
             <DialogFooter className="mt-4">
-              <Button type="submit">Atualizar Cliente</Button>
+              <Button type="submit">Atualizar Usuário</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Department Confirmation Dialog */}
+      {/* Delete User Confirmation Dialog */}
       <Dialog
         open={isDeleteDepartmentOpen}
         onOpenChange={setIsDeleteDepartmentOpen}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar Exclusão de Empresa</DialogTitle>
+            <DialogTitle>Confirmar Exclusão de Departamento</DialogTitle>
             <DialogDescription>
               Tem certeza que deseja excluir esta empresa? Esta ação não pode
               ser desfeita.
@@ -617,7 +975,7 @@ export default function AdminHomePage() {
           <div className="flex items-center justify-center p-4 bg-yellow-100 rounded-md">
             <AlertTriangle className="w-6 h-6 text-yellow-600 mr-2" />
             <p className="text-yellow-700">
-              Todos os clientes e dados associados serão removidos.
+              Todos os logs e dados associados serão removidos.
             </p>
           </div>
           <DialogFooter className="mt-4">
@@ -628,17 +986,75 @@ export default function AdminHomePage() {
               Cancelar
             </Button>
             <Button variant="destructive" onClick={confirmDeleteDepartment}>
-              Excluir Empresa
+              Excluir Departamento
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog
+        open={isDataDepartmentOpen}
+        onOpenChange={setIsDataDepartmentOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Informações do Departamento</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="text-left col-span-1">
+                  Nome
+                </Label>
+                <div id="name" className="col-span-3 text-left">
+                  {seeDataDepartment?.name}
+                </div>
+              </div>
 
-      {/* Delete UserCustomer Confirmation Dialog */}
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-left col-span-1">
+                  Email
+                </Label>
+                <div id="email" className="col-span-3 text-left">
+                  {seeDataDepartment?.email}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="department" className="text-left col-span-1">
+                  Departamento
+                </Label>
+                <div id="department" className="col-span-3 text-left">
+                  {folderUpFoldersFormat[seeDataDepartment?.department || ""]}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="phone" className="text-left col-span-1">
+                  Telefone
+                </Label>
+                <div id="phone" className="col-span-3 text-left">
+                  {seeDataDepartment?.phone || "Não informado"}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="cod" className="text-left col-span-1">
+                  COD
+                </Label>
+                <div id="cod" className="col-span-3 text-left">
+                  {seeDataDepartment?.cod || "Não informado"}
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
       <Dialog open={isDeleteClientOpen} onOpenChange={setIsDeleteClientOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar Exclusão de Cliente</DialogTitle>
+            <DialogTitle>Confirmar Exclusão de Usuário</DialogTitle>
             <DialogDescription>
               Tem certeza que deseja excluir este cliente? Esta ação não pode
               ser desfeita.
@@ -658,7 +1074,7 @@ export default function AdminHomePage() {
               Cancelar
             </Button>
             <Button variant="destructive" onClick={confirmDeleteClient}>
-              Excluir Cliente
+              Excluir Usuário
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -666,7 +1082,7 @@ export default function AdminHomePage() {
 
       <footer className="border-t">
         <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          © 2023 Nome da Empresa. Todos os direitos reservados.
+          © 2023 Nome da Departamento. Todos os direitos reservados.
         </div>
       </footer>
     </div>

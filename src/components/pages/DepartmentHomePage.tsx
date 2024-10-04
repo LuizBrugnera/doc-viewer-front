@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Users, FileText, Plus, Trash } from "lucide-react";
+import { Search, Users, FileText, Plus, Trash, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -39,7 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentService } from "@/services/DocumentService";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
-import { Document, UserCustomer } from "@/types/GlobalTypes";
+import { Document, User } from "@/types/GlobalTypes";
 import FolderSistemToUpload from "../FolderSistemToUpload";
 import { folderFormat } from "../utils";
 
@@ -49,8 +49,7 @@ export default function DepartmentHomePage({
   foldersAcess: string[];
 }) {
   const { token } = useAuth();
-  const [selectedUserCustomer, setSelectedUserCustomer] =
-    useState<UserCustomer | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
   const [isEditDocumentOpen, setIsEditDocumentOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
@@ -59,18 +58,51 @@ export default function DepartmentHomePage({
   const [newDocumentFolder, setNewDocumentFolder] = useState("");
   const [newDocumentFile, setNewDocumentFile] = useState<File | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [users, setUsers] = useState<UserCustomer[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [documentSearchQuery, setDocumentSearchQuery] = useState("");
 
-  const handleSelectUserCustomer = (client: UserCustomer) => {
-    setSelectedUserCustomer(client);
+  const handleSelectUser = (client: User) => {
+    setSelectedUser(client);
+  };
+
+  const handleDownload = async (
+    id: number,
+    fileName: string,
+    userId: number
+  ) => {
+    try {
+      if (!token) {
+        alert("Usuário não autenticado.");
+        return;
+      }
+
+      const response = await DocumentService.downloadFile(token, id, userId);
+      const contentType =
+        response.headers["content-type"] || "application/octet-stream";
+
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: contentType })
+      );
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${fileName}`);
+      document.body.appendChild(link);
+      link.click();
+
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Erro ao fazer download do arquivo:", error);
+      alert("Erro ao fazer download do arquivo.");
+    }
   };
 
   const handleAddDocument = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!newDocumentFile || !selectedUserCustomer || !newDocumentFolder) {
+    if (!newDocumentFile || !selectedUser || !newDocumentFolder) {
       alert("Por favor, preencha todos os campos e selecione um cliente.");
       return;
     }
@@ -87,20 +119,20 @@ export default function DepartmentHomePage({
     );
 
     try {
-      if (!token || !selectedUserCustomer) {
+      if (!token || !selectedUser) {
         alert("Token ou cliente não encontrado");
         return;
       }
 
       const result = await DocumentService.uploadFile(
         token,
-        selectedUserCustomer.id,
+        +selectedUser.id,
         formData
       );
 
       const newDoc: Document = {
         id: result.id,
-        userId: +selectedUserCustomer.id,
+        userId: +selectedUser.id,
         name: newDocumentName,
         type: newDocumentDescription,
         date: new Date().toISOString(),
@@ -226,7 +258,7 @@ export default function DepartmentHomePage({
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredUsers.map((client) => (
+                          {filteredUsers.slice(0, 10).map((client) => (
                             <TableRow key={client.id}>
                               <TableCell>{client.name}</TableCell>
                               <TableCell>{client.email}</TableCell>
@@ -234,9 +266,7 @@ export default function DepartmentHomePage({
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() =>
-                                    handleSelectUserCustomer(client)
-                                  }
+                                  onClick={() => handleSelectUser(client)}
                                 >
                                   <Users className="w-4 h-4 mr-2" />
                                   Selecionar
@@ -255,13 +285,13 @@ export default function DepartmentHomePage({
                 <CardHeader>
                   <CardTitle>Documentos do Cliente</CardTitle>
                   <CardDescription>
-                    {selectedUserCustomer
-                      ? `Documentos de ${selectedUserCustomer.name}`
+                    {selectedUser
+                      ? `Documentos de ${selectedUser.name}`
                       : "Selecione um cliente para ver os documentos"}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {selectedUserCustomer ? (
+                  {selectedUser ? (
                     <div className="space-y-4">
                       <Button onClick={() => setIsAddDocumentOpen(true)}>
                         <Plus className="w-4 h-4 mr-2" />
@@ -290,9 +320,7 @@ export default function DepartmentHomePage({
                           </TableHeader>
                           <TableBody>
                             {filteredDocuments
-                              .filter(
-                                (doc) => doc.userId === selectedUserCustomer.id
-                              )
+                              .filter((doc) => +doc.userId === +selectedUser.id)
                               .map((document) => (
                                 <TableRow key={document.id}>
                                   <TableCell>{document.name}</TableCell>
@@ -312,6 +340,19 @@ export default function DepartmentHomePage({
                                         }
                                       >
                                         <Trash className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                          handleDownload(
+                                            document.id,
+                                            document.name,
+                                            document.userId
+                                          )
+                                        }
+                                      >
+                                        <Download className="w-4 h-4" />
                                       </Button>
                                     </div>
                                   </TableCell>

@@ -16,14 +16,11 @@ import { DocumentService } from "@/services/DocumentService";
 import { categoriesDefault } from "./utils";
 import { Category, File } from "@/types/GlobalTypes";
 
-
 interface Folder {
   name: string;
   resource: "folder";
   contents: (File | Folder)[];
 }
-
-
 
 export default function FolderSistem() {
   const { token } = useAuth();
@@ -34,6 +31,9 @@ export default function FolderSistem() {
     const [year, month, day] = date.split("T")[0].split("-");
     return `${day}/${month}/${year}`;
   };
+  const [categories, setCategories] = useState<Category[]>(
+    JSON.parse(JSON.stringify(categoriesDefault)) as Category[]
+  );
 
   const handleDownload = async (id: number, fileName: string) => {
     try {
@@ -63,9 +63,6 @@ export default function FolderSistem() {
       alert("Erro ao fazer download do arquivo.");
     }
   };
-  const [categories, setCategories] = useState<Category[]>(
-    JSON.parse(JSON.stringify(categoriesDefault)) as Category[]
-  );
 
   const handleCategoryClick = (categoryName: string) => {
     if (activeCategory === categoryName) {

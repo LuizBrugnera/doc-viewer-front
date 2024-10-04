@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, User, Building } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,24 +15,32 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import useAuth from "../../security/UseAuth";
-import { AuthService } from "../../services/AuthService";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import useAuth from "@/security/UseAuth";
+import { AuthService } from "@/services/AuthService";
+
+const formatCPF = (value: string) => {
+  const cpf = value.replace(/\D/g, "");
+  return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
+const formatCNPJ = (value: string) => {
+  const cnpj = value.replace(/\D/g, "");
+  return cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+};
 
 export default function LoginPage() {
   const { signIn, signOut } = useAuth();
+  const [loginType, setLoginType] = useState("email");
   const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [cnpj, setCnpj] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    signOut();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const goToForgot = () => {
     navigate("/forgot-password");
@@ -42,24 +51,118 @@ export default function LoginPage() {
     setError("");
     setIsLoading(true);
 
-    if (!email || !password) {
+    const identifier =
+      loginType === "email" ? email : loginType === "cpf" ? cpf : cnpj;
+
+    if (!identifier || !password) {
       setError("Por favor, preencha todos os campos.");
       setIsLoading(false);
       return;
     }
 
     try {
-      const token = await AuthService.login({ email, password });
-      signIn(token);
-      toast.success("Login realizado com sucesso!");
-      setTimeout(() => {
-        navigate("/home");
-      }, 1100);
+      if (loginType === "email") {
+        const token = await AuthService.login({
+          email,
+          password,
+        });
+        signIn(token);
+        toast.success("Login realizado com sucesso!");
+        setTimeout(() => {
+          navigate("/home");
+        }, 1100);
+      } else if (loginType === "cpf") {
+        const token = await AuthService.loginCpf({
+          cpf,
+          password,
+        });
+        signIn(token);
+        toast.success("Login realizado com sucesso!");
+        setTimeout(() => {
+          navigate("/home");
+        }, 1100);
+      } else if (loginType === "cnpj") {
+        const token = await AuthService.loginCnpj({
+          cnpj,
+          password,
+        });
+        signIn(token);
+        toast.success("Login realizado com sucesso!");
+        setTimeout(() => {
+          navigate("/home");
+        }, 1100);
+      }
     } catch (error) {
       setError("Erro ao fazer login. Verifique suas credenciais.");
-      console.log(error);
+      console.error(error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCPF(e.target.value);
+    setCpf(formatted);
+  };
+
+  const handleCNPJChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCNPJ(e.target.value);
+    setCnpj(formatted);
+  };
+
+  useEffect(() => {
+    signOut();
+  }, []);
+
+  const renderInputField = () => {
+    switch (loginType) {
+      case "email":
+        return (
+          <div className="relative">
+            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              id="email"
+              placeholder="seu@email.com"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-10"
+              required
+            />
+          </div>
+        );
+      case "cpf":
+        return (
+          <div className="relative">
+            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              id="cpf"
+              placeholder="000.000.000-00"
+              type="text"
+              value={cpf}
+              onChange={handleCPFChange}
+              className="pl-10"
+              required
+              maxLength={14}
+            />
+          </div>
+        );
+      case "cnpj":
+        return (
+          <div className="relative">
+            <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              id="cnpj"
+              placeholder="00.000.000/0000-00"
+              type="text"
+              value={cnpj}
+              onChange={handleCNPJChange}
+              className="pl-10"
+              required
+              maxLength={18}
+            />
+          </div>
+        );
     }
   };
 
@@ -75,32 +178,36 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4 ">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  id="email"
-                  placeholder="seu@email.com"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const passwordInput = document.getElementById(
-                        "password"
-                      ) as HTMLInputElement;
-                      if (passwordInput) {
-                        passwordInput.focus();
-                      }
-                    }
-                  }}
-                />
-              </div>
-            </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <Tabs
+              value={loginType}
+              onValueChange={setLoginType}
+              className="w-full"
+            >
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="email">Email</TabsTrigger>
+                <TabsTrigger value="cpf">CPF</TabsTrigger>
+                <TabsTrigger value="cnpj">CNPJ</TabsTrigger>
+              </TabsList>
+              <TabsContent value="email">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  {renderInputField()}
+                </div>
+              </TabsContent>
+              <TabsContent value="cpf">
+                <div className="space-y-2">
+                  <Label htmlFor="cpf">CPF</Label>
+                  {renderInputField()}
+                </div>
+              </TabsContent>
+              <TabsContent value="cnpj">
+                <div className="space-y-2">
+                  <Label htmlFor="cnpj">CNPJ</Label>
+                  {renderInputField()}
+                </div>
+              </TabsContent>
+            </Tabs>
             <div className="space-y-2">
               <Label htmlFor="password">Senha</Label>
               <div className="relative">
@@ -112,11 +219,6 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
                   required
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleLogin(e);
-                    }
-                  }}
                 />
                 <button
                   type="button"
