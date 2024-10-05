@@ -1,7 +1,7 @@
 import axios from "axios";
 import { LoginData, RegisterData } from "../types/GlobalTypes";
 
-const API_URL = import.meta.env.VITE_API_URL + "/api/v1/auth";
+const API_URL = "http://167.88.33.108/api/v1/auth";
 
 export const AuthService = {
   async login(data: LoginData): Promise<string> {

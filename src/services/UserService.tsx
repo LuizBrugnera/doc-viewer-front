@@ -1,7 +1,7 @@
 import { User, UserInfo } from "@/types/GlobalTypes";
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL + "/api/v1/user";
+const API_URL = "http://167.88.33.108/api/v1/user";
 
 export const UserService = {
   async createUser(token: string, userData: UserInfo): Promise<void> {

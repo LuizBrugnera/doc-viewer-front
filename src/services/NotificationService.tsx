@@ -1,7 +1,7 @@
 import { Notification } from "@/types/GlobalTypes";
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL + "/api/v1/notification";
+const API_URL = "http://167.88.33.108/api/v1/notification";
 
 export const NotificationService = {
   async updateViewed(token: string, notficationId: number): Promise<void> {

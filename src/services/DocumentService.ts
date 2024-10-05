@@ -1,7 +1,7 @@
 import { Category, Document, DocumentMetaData } from "@/types/GlobalTypes";
 import axios, { AxiosResponse } from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL + "/api/v1/document";
+const API_URL = "http://167.88.33.108/api/v1/document";
 
 export const DocumentService = {
   async uploadFile(
