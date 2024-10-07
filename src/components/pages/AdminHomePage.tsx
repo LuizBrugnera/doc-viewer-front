@@ -171,7 +171,6 @@ export default function AdminHomePage() {
       }
 
       const data = await UserService.findByDepartment(token);
-      console.log(data);
       setClients(data);
     } catch (error) {
       console.error("Erro ao buscar clientes:", error);
