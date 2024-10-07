@@ -102,7 +102,15 @@ export default function AdminHomePage() {
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] =
-    useState<UpdateDepartmentForm | null>(null);
+    useState<UpdateDepartmentForm | null>({
+      id: 0,
+      name: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      department: "",
+    });
   const [editingClient, setEditingClient] = useState<UpdateUserForm | null>(
     null
   );
@@ -822,29 +830,26 @@ export default function AdminHomePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="departmentDepartment">Departamento*</Label>
-                <Select
+                <select
+                  id="departmentDepartment"
                   value={addDepartmentForm?.department || ""}
-                  onValueChange={(value) =>
+                  onChange={(e) =>
                     setAddDepartmentForm(
                       addDepartmentForm
-                        ? { ...addDepartmentForm, department: value }
+                        ? { ...addDepartmentForm, department: e.target.value }
                         : null
                     )
                   }
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o departamento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="financeiro">Financeiro</SelectItem>
-                    <SelectItem value="documentosTecnicos">
-                      Documentos Tecnicos
-                    </SelectItem>
-                    <SelectItem value="faturamento">Faturamento</SelectItem>
-                    <SelectItem value="esocial">E-social</SelectItem>
-                    <SelectItem value="vendas">Vendas</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="financeiro">Financeiro</option>
+                  <option value="documentosTecnicos">
+                    Documentos Técnicos
+                  </option>
+                  <option value="faturamento">Faturamento</option>
+                  <option value="esocial">E-social</option>
+                  <option value="vendas">Vendas</option>
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="departmentPassword">
@@ -961,32 +966,27 @@ export default function AdminHomePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="editDepartmentDepartment">
-                    Departamento da Departamento
-                  </Label>
-                  <Select
-                    value={editingDepartment?.department || ""}
-                    onValueChange={(value) =>
-                      setEditingDepartment(
-                        editingDepartment
-                          ? { ...editingDepartment, department: value }
+                  <Label htmlFor="departmentDepartment">Departamento*</Label>
+                  <select
+                    id="departmentDepartment"
+                    value={addDepartmentForm?.department || ""}
+                    onChange={(e) =>
+                      setAddDepartmentForm(
+                        addDepartmentForm
+                          ? { ...addDepartmentForm, department: e.target.value }
                           : null
                       )
                     }
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o departamento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="financeiro">Financeiro</SelectItem>
-                      <SelectItem value="documentosTecnicos">
-                        Documentos Tecnicos
-                      </SelectItem>
-                      <SelectItem value="faturamento">Faturamento</SelectItem>
-                      <SelectItem value="esocial">E-social</SelectItem>
-                      <SelectItem value="vendas">Vendas</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <option value="financeiro">Financeiro</option>
+                    <option value="documentosTecnicos">
+                      Documentos Técnicos
+                    </option>
+                    <option value="faturamento">Faturamento</option>
+                    <option value="esocial">E-social</option>
+                    <option value="vendas">Vendas</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="editDepartmentPassword">
