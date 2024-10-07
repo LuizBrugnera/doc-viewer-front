@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import NotificationBell from "./NotificationBell";
 import LoadingSpinner from "./LoadingSpinner";
-
+import icon from "../assets/icon.png";
 const Navbar: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -30,24 +30,9 @@ const Navbar: React.FC = () => {
           <div className="container mx-auto px-4 py-4 flex justify-between items-center">
             <div className="flex-shrink-0 flex items-center">
               <Link to={"/home"} className="flex items-center">
-                <svg
-                  className="h-8 w-auto text-primary"
-                  fill="none"
-                  height="24"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
-                  <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9" />
-                  <path d="M12 3v6" />
-                </svg>
+                <img src={icon} alt="icon" className="w-11 h-12" />
                 <span className="ml-2 text-xl font-bold text-gray-800">
-                  YourLogo
+                  Visualizador de Documentos
                 </span>
               </Link>
             </div>
@@ -70,24 +55,9 @@ const Navbar: React.FC = () => {
             <div className="flex justify-between h-16">
               <div className="flex-shrink-0 flex items-center">
                 <Link to={"/"} className="flex items-center">
-                  <svg
-                    className="h-8 w-auto text-primary"
-                    fill="none"
-                    height="24"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                    width="24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z" />
-                    <path d="m3 9 2.45-4.9A2 2 0 0 1 7.24 3h9.52a2 2 0 0 1 1.8 1.1L21 9" />
-                    <path d="M12 3v6" />
-                  </svg>
+                  <img src={icon} alt="icon" className="w-11 h-12" />
                   <span className="ml-2 text-xl font-bold text-gray-800">
-                    YourLogo
+                    Visualizador de Documentos
                   </span>
                 </Link>
               </div>
