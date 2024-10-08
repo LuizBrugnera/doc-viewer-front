@@ -197,22 +197,19 @@ export default function DepartmentHomePage({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="documentFolder">Pasta</Label>
-                <Select
+                <select
+                  id="documentFolder"
                   value={newDocumentFolder}
-                  onValueChange={(value) => setNewDocumentFolder(value)}
+                  onChange={(e) => setNewDocumentFolder(e.target.value)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                   required
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a pasta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {foldersAcess.map((folder) => (
-                      <SelectItem key={folder} value={folder}>
-                        {folderFormat[folder]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {foldersAcess.map((folder) => (
+                    <option key={folder} value={folder}>
+                      {folderFormat[folder]}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="documentDescription">Descrição</Label>
