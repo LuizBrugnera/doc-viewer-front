@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import NotificationBell from "./NotificationBell";
 import LoadingSpinner from "./LoadingSpinner";
 import icon from "../assets/icon.png";
+
 const Navbar: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);

@@ -34,10 +34,14 @@ interface Folder {
 
 interface FolderSistemToUploadProps {
   foldersAcess?: string[];
+  setIsErrorUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  setFilesErrorToUpload: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export default function FolderSistemToUpload({
   foldersAcess,
+  setFilesErrorToUpload,
+  setIsErrorUploadOpen,
 }: FolderSistemToUploadProps) {
   const { token } = useAuth();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -45,6 +49,7 @@ export default function FolderSistemToUpload({
   const [searchQuery, setSearchQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const activePathRef = useRef(activePath);
 
   useEffect(() => {
@@ -165,12 +170,16 @@ export default function FolderSistemToUpload({
   };
 
   const handleUpload = async (files: FileList) => {
+    setLoading(true);
+    setFilesErrorToUpload([]);
+
     if (!token) {
       alert("Usuário não autenticado.");
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
+    const errors: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
@@ -184,14 +193,15 @@ export default function FolderSistemToUpload({
       } catch (error) {
         console.error("Erro ao fazer upload dos arquivos:", error);
         console.log(" erro com o name", files[i].name);
+        errors.push(files[i].name);
       }
     }
+
     setLoading(false);
-    try {
-      alert("Arquivos enviados com sucesso!");
-    } catch (error) {
-      console.error("Erro ao fazer upload dos arquivos:", error);
-      alert("Erro ao fazer upload dos arquivos.");
+
+    if (errors.length > 0) {
+      setFilesErrorToUpload(errors);
+      setIsErrorUploadOpen(true);
     }
   };
 

@@ -95,6 +95,8 @@ export default function AdminHomePage() {
   const [selectedDepartment, setSelectedDepartment] = useState<User | null>(
     null
   );
+  const [isErrorUploadOpen, setIsErrorUploadOpen] = useState(false);
+  const [filesErrorToUpload, setFilesErrorToUpload] = useState<string[]>([]);
   const [isAddDepartmentOpen, setIsAddDepartmentOpen] = useState(false);
   const [isEditDepartmentOpen, setIsEditDepartmentOpen] = useState(false);
   const [isDataDepartmentOpen, setIsDataDepartmentOpen] = useState(false);
@@ -757,7 +759,10 @@ export default function AdminHomePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <FolderSistemToUpload />
+                <FolderSistemToUpload
+                  setFilesErrorToUpload={setFilesErrorToUpload}
+                  setIsErrorUploadOpen={setIsErrorUploadOpen}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -1344,6 +1349,33 @@ export default function AdminHomePage() {
               Excluir Departamento
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isErrorUploadOpen} onOpenChange={setIsErrorUploadOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Documentos não enviados corretamente</DialogTitle>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="grid gap-4 py-4">
+              {filesErrorToUpload.map((filename) => {
+                return (
+                  <div
+                    key={filename}
+                    className="grid grid-cols-4 items-center gap-4"
+                  >
+                    <Label htmlFor="name" className="text-left col-span-1">
+                      Nome do Arquivo
+                    </Label>
+                    <div id="name" className="col-span-3 text-left">
+                      {filename}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
       <Dialog

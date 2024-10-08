@@ -36,6 +36,7 @@ import { Document, User } from "@/types/GlobalTypes";
 import FolderSistemToUpload from "../FolderSistemToUpload";
 import { folderFormat } from "../utils";
 import { UserManagement } from "../UserManagement";
+import { ScrollArea } from "@radix-ui/react-scroll-area";
 
 export default function DepartmentHomePage({
   foldersAcess,
@@ -53,6 +54,8 @@ export default function DepartmentHomePage({
   const [newDocumentFile, setNewDocumentFile] = useState<File | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [isErrorUploadOpen, setIsErrorUploadOpen] = useState(false);
+  const [filesErrorToUpload, setFilesErrorToUpload] = useState<string[]>([]);
 
   const handleAddDocument = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,7 +171,11 @@ export default function DepartmentHomePage({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <FolderSistemToUpload foldersAcess={foldersAcess} />
+                <FolderSistemToUpload
+                  foldersAcess={foldersAcess}
+                  setFilesErrorToUpload={setFilesErrorToUpload}
+                  setIsErrorUploadOpen={setIsErrorUploadOpen}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -197,19 +204,22 @@ export default function DepartmentHomePage({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="documentFolder">Pasta</Label>
-                <select
-                  id="documentFolder"
+                <Select
                   value={newDocumentFolder}
-                  onChange={(e) => setNewDocumentFolder(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                  onValueChange={(value) => setNewDocumentFolder(value)}
                   required
                 >
-                  {foldersAcess.map((folder) => (
-                    <option key={folder} value={folder}>
-                      {folderFormat[folder]}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a pasta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {foldersAcess.map((folder) => (
+                      <SelectItem key={folder} value={folder}>
+                        {folderFormat[folder]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="documentDescription">Descrição</Label>
@@ -297,6 +307,31 @@ export default function DepartmentHomePage({
               <Button type="submit">Atualizar Documento</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isErrorUploadOpen} onOpenChange={setIsErrorUploadOpen}>
+        <DialogContent className="overflow-auto max-h-[60vh]">
+          <DialogHeader>
+            <DialogTitle>Documentos não enviados corretamente</DialogTitle>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="grid gap-4 py-4">
+              {filesErrorToUpload.map((filename) => (
+                <div
+                  key={filename}
+                  className="grid grid-cols-4 items-center gap-4"
+                >
+                  <Label htmlFor="name" className="text-left col-span-1">
+                    Nome do Arquivo
+                  </Label>
+                  <div id="name" className="col-span-3 text-left">
+                    {filename}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
