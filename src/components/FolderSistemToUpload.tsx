@@ -36,12 +36,14 @@ interface FolderSistemToUploadProps {
   foldersAcess?: string[];
   setIsErrorUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setFilesErrorToUpload: React.Dispatch<React.SetStateAction<string[]>>;
+  setFilesSuccessToUpload: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 export default function FolderSistemToUpload({
   foldersAcess,
   setFilesErrorToUpload,
   setIsErrorUploadOpen,
+  setFilesSuccessToUpload,
 }: FolderSistemToUploadProps) {
   const { token } = useAuth();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -172,7 +174,7 @@ export default function FolderSistemToUpload({
   const handleUpload = async (files: FileList) => {
     setLoading(true);
     setFilesErrorToUpload([]);
-
+    setFilesSuccessToUpload([]);
     if (!token) {
       alert("Usuário não autenticado.");
       setLoading(false);
@@ -180,6 +182,7 @@ export default function FolderSistemToUpload({
     }
 
     const errors: string[] = [];
+    const success: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
@@ -190,6 +193,7 @@ export default function FolderSistemToUpload({
       try {
         await DocumentService.uploadFileFast(token, formData);
         console.log("acerto com o nome", files[i].name);
+        success.push(files[i].name);
       } catch (error) {
         console.error("Erro ao fazer upload dos arquivos:", error);
         console.log(" erro com o name", files[i].name);
@@ -202,6 +206,7 @@ export default function FolderSistemToUpload({
     if (errors.length > 0) {
       setFilesErrorToUpload(errors);
       setIsErrorUploadOpen(true);
+      setFilesSuccessToUpload(success);
     }
   };
 

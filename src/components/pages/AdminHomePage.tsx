@@ -97,6 +97,9 @@ export default function AdminHomePage() {
   );
   const [isErrorUploadOpen, setIsErrorUploadOpen] = useState(false);
   const [filesErrorToUpload, setFilesErrorToUpload] = useState<string[]>([]);
+  const [filesSuccessToUpload, setFilesSuccessToUpload] = useState<string[]>(
+    []
+  );
   const [isAddDepartmentOpen, setIsAddDepartmentOpen] = useState(false);
   const [isEditDepartmentOpen, setIsEditDepartmentOpen] = useState(false);
   const [isDataDepartmentOpen, setIsDataDepartmentOpen] = useState(false);
@@ -762,6 +765,7 @@ export default function AdminHomePage() {
                 <FolderSistemToUpload
                   setFilesErrorToUpload={setFilesErrorToUpload}
                   setIsErrorUploadOpen={setIsErrorUploadOpen}
+                  setFilesSuccessToUpload={setFilesSuccessToUpload}
                 />
               </CardContent>
             </Card>
@@ -1354,10 +1358,11 @@ export default function AdminHomePage() {
       <Dialog open={isErrorUploadOpen} onOpenChange={setIsErrorUploadOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Documentos não enviados corretamente</DialogTitle>
+            <DialogTitle>Status dos Documentos </DialogTitle>
           </DialogHeader>
 
           <ScrollArea className="max-h-[60vh] pr-4">
+            <DialogTitle>Documentos não enviados corretamente</DialogTitle>
             <div className="grid gap-4 py-4">
               {filesErrorToUpload.map((filename) => {
                 return (
@@ -1366,6 +1371,27 @@ export default function AdminHomePage() {
                     className="grid grid-cols-4 items-center gap-4"
                   >
                     <Label htmlFor="name" className="text-left col-span-1">
+                      Nome do Arquivo
+                    </Label>
+                    <div id="name" className="col-span-3 text-left">
+                      {filename}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <DialogTitle>Documentos enviados com sucesso</DialogTitle>
+            <div className="grid gap-4 py-4">
+              {filesSuccessToUpload.map((filename) => {
+                return (
+                  <div
+                    key={filename}
+                    className="grid grid-cols-4 items-center gap-4"
+                  >
+                    <Label
+                      htmlFor="name"
+                      className="text-left col-span-1 space-y-4"
+                    >
                       Nome do Arquivo
                     </Label>
                     <div id="name" className="col-span-3 text-left">

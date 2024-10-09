@@ -56,6 +56,9 @@ export default function DepartmentHomePage({
   const [users, setUsers] = useState<User[]>([]);
   const [isErrorUploadOpen, setIsErrorUploadOpen] = useState(false);
   const [filesErrorToUpload, setFilesErrorToUpload] = useState<string[]>([]);
+  const [filesSuccessToUpload, setFilesSuccessToUpload] = useState<string[]>(
+    []
+  );
 
   const handleAddDocument = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,6 +178,7 @@ export default function DepartmentHomePage({
                   foldersAcess={foldersAcess}
                   setFilesErrorToUpload={setFilesErrorToUpload}
                   setIsErrorUploadOpen={setIsErrorUploadOpen}
+                  setFilesSuccessToUpload={setFilesSuccessToUpload}
                 />
               </CardContent>
             </Card>
@@ -310,26 +314,50 @@ export default function DepartmentHomePage({
         </DialogContent>
       </Dialog>
       <Dialog open={isErrorUploadOpen} onOpenChange={setIsErrorUploadOpen}>
-        <DialogContent className="overflow-auto max-h-[60vh]">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Documentos não enviados corretamente</DialogTitle>
+            <DialogTitle>Status dos Documentos </DialogTitle>
           </DialogHeader>
 
           <ScrollArea className="max-h-[60vh] pr-4">
+            <DialogTitle>Documentos não enviados corretamente</DialogTitle>
             <div className="grid gap-4 py-4">
-              {filesErrorToUpload.map((filename) => (
-                <div
-                  key={filename}
-                  className="grid grid-cols-4 items-center gap-4"
-                >
-                  <Label htmlFor="name" className="text-left col-span-1">
-                    Nome do Arquivo
-                  </Label>
-                  <div id="name" className="col-span-3 text-left">
-                    {filename}
+              {filesErrorToUpload.map((filename) => {
+                return (
+                  <div
+                    key={filename}
+                    className="grid grid-cols-4 items-center gap-4"
+                  >
+                    <Label htmlFor="name" className="text-left col-span-1">
+                      Nome do Arquivo
+                    </Label>
+                    <div id="name" className="col-span-3 text-left">
+                      {filename}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+            <DialogTitle>Documentos enviados com sucesso</DialogTitle>
+            <div className="grid gap-4 py-4">
+              {filesSuccessToUpload.map((filename) => {
+                return (
+                  <div
+                    key={filename}
+                    className="grid grid-cols-4 items-center gap-4"
+                  >
+                    <Label
+                      htmlFor="name"
+                      className="text-left col-span-1 space-y-4"
+                    >
+                      Nome do Arquivo
+                    </Label>
+                    <div id="name" className="col-span-3 text-left">
+                      {filename}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </ScrollArea>
         </DialogContent>
