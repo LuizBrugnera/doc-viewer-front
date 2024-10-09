@@ -1362,8 +1362,8 @@ export default function AdminHomePage() {
           </DialogHeader>
 
           <ScrollArea className="max-h-[60vh] pr-4">
-            <DialogTitle>Documentos não enviados corretamente</DialogTitle>
             <div className="grid gap-4 py-4">
+              <DialogTitle>Documentos não enviados corretamente</DialogTitle>
               {filesErrorToUpload.map((filename) => {
                 return (
                   <div
@@ -1380,8 +1380,9 @@ export default function AdminHomePage() {
                 );
               })}
             </div>
-            <DialogTitle>Documentos enviados com sucesso</DialogTitle>
+
             <div className="grid gap-4 py-4">
+              <DialogTitle>Documentos enviados com sucesso</DialogTitle>
               {filesSuccessToUpload.map((filename) => {
                 return (
                   <div
