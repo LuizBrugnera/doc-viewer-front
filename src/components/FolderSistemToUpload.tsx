@@ -203,11 +203,9 @@ export default function FolderSistemToUpload({
 
     setLoading(false);
 
-    if (errors.length > 0) {
-      setFilesErrorToUpload(errors);
-      setIsErrorUploadOpen(true);
-      setFilesSuccessToUpload(success);
-    }
+    setFilesErrorToUpload(errors);
+    setIsErrorUploadOpen(true);
+    setFilesSuccessToUpload(success);
   };
 
   const renderContent = (content: (Folder | File)[]) => {
