@@ -602,7 +602,13 @@ export default function AdminHomePage() {
           <TabsContent value="clients">
             <Card>
               <CardHeader>
-                <CardTitle>Gerenciar Usuários</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Gerenciar Usuários</CardTitle>
+                  <CardDescription>
+                    Usuários Cadastrados - {clients.length}
+                  </CardDescription>
+                </div>
+
                 <CardDescription>
                   Visualize e gerencie clientes por empresa
                 </CardDescription>

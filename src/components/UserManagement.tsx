@@ -43,6 +43,7 @@ export const UserManagement = ({
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [documentSearchQuery, setDocumentSearchQuery] = useState("");
   const [usersDisplayed, setUsersDisplayed] = useState(10);
+  const [userDocuments, setUserDocuments] = useState<Document[]>([]);
 
   const handleLoadMoreUsers = () => {
     setUsersDisplayed((prev) => Math.min(prev + 50, 500));
@@ -100,6 +101,14 @@ export const UserManagement = ({
       });
     }
   };
+
+  useEffect(() => {
+    if (selectedUser) {
+      setUserDocuments(
+        filteredDocuments.filter((doc) => +doc.userId === +selectedUser.id)
+      );
+    }
+  }, [selectedUser, documentSearchQuery, documents]);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -193,7 +202,15 @@ export const UserManagement = ({
 
         <Card>
           <CardHeader>
-            <CardTitle>Documentos do Cliente</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Documentos do Cliente</CardTitle>
+              <CardDescription>
+                {" "}
+                {selectedUser && userDocuments.length > 0
+                  ? `${userDocuments.length} Documentos`
+                  : ""}
+              </CardDescription>
+            </div>
             <CardDescription>
               {selectedUser
                 ? `Documentos de ${selectedUser.name}`
@@ -227,43 +244,39 @@ export const UserManagement = ({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredDocuments
-                        .filter((doc) => +doc.userId === +selectedUser.id)
-                        .map((document) => (
-                          <TableRow key={document.id}>
-                            <TableCell>{document.name}</TableCell>
-                            <TableCell>
-                              {folderFormat[document.folder]}
-                            </TableCell>
-                            <TableCell>{document.type.toUpperCase()}</TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleDeleteDocument(document.id)
-                                  }
-                                >
-                                  <Trash className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleDownload(
-                                      document.id,
-                                      document.name,
-                                      document.userId
-                                    )
-                                  }
-                                >
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                      {userDocuments.map((document) => (
+                        <TableRow key={document.id}>
+                          <TableCell>{document.name}</TableCell>
+                          <TableCell>{folderFormat[document.folder]}</TableCell>
+                          <TableCell>{document.type.toUpperCase()}</TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleDeleteDocument(document.id)
+                                }
+                              >
+                                <Trash className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleDownload(
+                                    document.id,
+                                    document.name,
+                                    document.userId
+                                  )
+                                }
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
