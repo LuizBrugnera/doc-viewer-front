@@ -1,26 +1,64 @@
 import axios from "axios";
-import { LoginData, RegisterData } from "../types/GlobalTypes";
+import {
+  EmailLogin,
+  InfoCommum,
+  LoginData,
+  RegisterData,
+} from "../types/GlobalTypes";
 
-const API_URL = "http://167.88.33.108/api/v1/auth";
+const API_URL = "http://localhost:3000/api/v1/auth";
 
 export const AuthService = {
-  async login(data: LoginData): Promise<string> {
-    const response = await axios.post(`${API_URL}/login`, data);
-    return response.data;
+  login: {
+    async user(data: LoginData): Promise<string> {
+      console.log(data);
+      const response = await axios.post(`${API_URL}/user/login`, data);
+      return response.data;
+    },
+    async admin(data: EmailLogin): Promise<string> {
+      const response = await axios.post(`${API_URL}/admin/login`, data);
+      return response.data;
+    },
+    async department(data: EmailLogin): Promise<string> {
+      const response = await axios.post(`${API_URL}/department/login`, data);
+      return response.data;
+    },
   },
 
-  async loginCpf(data: { cpf: string; password: string }): Promise<string> {
-    const response = await axios.post(`${API_URL}/login-cpf`, data);
-    return response.data;
+  register: {
+    async user(data: RegisterData): Promise<string> {
+      const response = await axios.post(`${API_URL}/user/register`, data);
+      return response.data;
+    },
+    async admin(data: EmailLogin, token: string): Promise<string> {
+      const response = await axios.post(`${API_URL}/admin/register`, data, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    },
+    async department(data: EmailLogin, token: string): Promise<string> {
+      const response = await axios.post(
+        `${API_URL}/department/register`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return response.data;
+    },
   },
 
-  async loginCnpj(data: { cnpj: string; password: string }): Promise<string> {
-    const response = await axios.post(`${API_URL}/login-cnpj`, data);
-    return response.data;
-  },
+  async findUserInfo(token: string): Promise<InfoCommum> {
+    const response = await axios.get(`${API_URL}/user-info`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  async register(data: RegisterData): Promise<string> {
-    const response = await axios.post(`${API_URL}/register`, data);
     return response.data;
   },
 

@@ -11,10 +11,28 @@ export interface User {
   phone?: string;
   cod?: string;
   birthdate?: string;
+  dodcuments?: Document[];
+}
+
+export interface FoldersAccess {
+  id: number;
+  foldername: string;
+}
+
+export interface Department {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  department: string;
+  foldersAccess: FoldersAccess[];
+  logs: Log[];
 }
 
 export interface AuthContextData {
   user: User | null;
+  userInfo: InfoCommum | null;
   token: string | null;
   signIn: (token: string) => void;
   signOut: () => void;
@@ -32,17 +50,27 @@ export interface RegisterData {
   birthdate?: string;
 }
 
-export interface LoginData {
+export interface EmailLogin {
   email: string;
+  password: string;
+}
+
+export interface LoginData {
+  email?: string;
+  cpf?: string;
+  cnpj?: string;
   password: string;
 }
 
 export interface Log {
   id: number;
   description: string;
-  userId: number;
+  state: string;
   action: string;
   date: string;
+  created_at: string;
+  updated_at: string;
+  departmentId: number;
 }
 
 export interface Notification {
@@ -104,4 +132,16 @@ export interface Folder {
 export interface Category {
   name: string;
   contents: Folder[];
+}
+
+export interface InfoCommum {
+  name: string;
+  email: string;
+  mainEmail?: string;
+  cnpj?: string;
+  rg?: string;
+  cpf?: string;
+  cod?: string;
+  phone?: string;
+  department?: string;
 }

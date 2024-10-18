@@ -1,7 +1,7 @@
 import { Category, Document, DocumentMetaData } from "@/types/GlobalTypes";
 import axios, { AxiosResponse } from "axios";
 
-const API_URL = "http://167.88.33.108/api/v1/document";
+const API_URL = "http://localhost:3000/api/v1/documents";
 
 export const DocumentService = {
   async uploadFile(
@@ -10,7 +10,7 @@ export const DocumentService = {
     formData: FormData
   ): Promise<DocumentMetaData> {
     return (
-      await axios.post(`${API_URL}/upload-file/${userId}`, formData, {
+      await axios.post(`${API_URL}/upload/file/${userId}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -24,7 +24,7 @@ export const DocumentService = {
     formData: FormData
   ): Promise<DocumentMetaData> {
     return (
-      await axios.post(`${API_URL}/upload-file-fast`, formData, {
+      await axios.post(`${API_URL}/upload/auto-assign`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -34,7 +34,17 @@ export const DocumentService = {
   },
 
   async getFilesByUser(token: string): Promise<Document[]> {
-    const response = await axios.get(`${API_URL}/get-files-by-user`, {
+    const response = await axios.get(`${API_URL}/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  },
+
+  async getAllDocuments(token: string): Promise<Document[]> {
+    const response = await axios.get(`${API_URL}/`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -50,7 +60,7 @@ export const DocumentService = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ): Promise<AxiosResponse<any, any>> {
     const response = await axios.get(
-      `${API_URL}/download-file/${documentId}/${userId}`,
+      `${API_URL}/download/${documentId}/${userId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -64,20 +74,17 @@ export const DocumentService = {
   },
 
   async getFilesByUserDepartment(token: string): Promise<Document[]> {
-    const response = await axios.get(
-      `${API_URL}/get-files-by-user-department`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await axios.get(`${API_URL}/department`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     return response.data;
   },
 
   async deleteFile(token: string, documentId: number): Promise<void> {
-    await axios.delete(`${API_URL}/delete-file/${documentId}`, {
+    await axios.delete(`${API_URL}/${documentId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -85,24 +92,12 @@ export const DocumentService = {
   },
 
   async getFilesByUserWithFolderFormat(token: string): Promise<Category[]> {
-    const response = await axios.get(
-      `${API_URL}/get-files-by-user-with-folder-format`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    return response.data;
-  },
-
-  async uploadFiles(token: string, formData: FormData): Promise<void> {
-    await axios.post(`${API_URL}/upload-files`, formData, {
+    const response = await axios.get(`${API_URL}/folder-format`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
       },
     });
+
+    return response.data;
   },
 };

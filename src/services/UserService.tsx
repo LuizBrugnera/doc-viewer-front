@@ -1,7 +1,7 @@
 import { User, UserInfo } from "@/types/GlobalTypes";
 import axios from "axios";
 
-const API_URL = "http://167.88.33.108/api/v1/user";
+const API_URL = "http://localhost:3000/api/v1/users";
 
 export const UserService = {
   async createUser(token: string, userData: UserInfo): Promise<void> {
@@ -10,6 +10,16 @@ export const UserService = {
         Authorization: `Bearer ${token}`,
       },
     });
+  },
+
+  async findAllUsers(token: string): Promise<User[]> {
+    const response = await axios.get(`${API_URL}/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
   },
 
   async deleteUser(token: string, userId: number): Promise<void> {
@@ -26,26 +36,6 @@ export const UserService = {
         Authorization: `Bearer ${token}`,
       },
     });
-  },
-
-  async findByDepartment(token: string): Promise<User[]> {
-    const response = await axios.get(`${API_URL}/find-by-department`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    return response.data;
-  },
-
-  async findAllUserDepartaments(token: string): Promise<User[]> {
-    const response = await axios.get(`${API_URL}/find-all-departments`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    return response.data;
   },
 
   async updateUserByAdmin(token: string, userData: UserInfo): Promise<void> {
@@ -66,4 +56,5 @@ export const UserService = {
       },
     });
   },
+  
 };
