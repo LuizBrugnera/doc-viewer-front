@@ -61,9 +61,12 @@ export default function LoginPage() {
     }
 
     try {
-      if (loginType === "email") {
-        const token = await AuthService.login({
-          email,
+      let token;
+
+      // Caso o login seja por CPF ou CNPJ, usa apenas o `user`.
+      if (loginType === "cpf" || loginType === "cnpj") {
+        token = await AuthService.login.user({
+          [loginType]: identifier,
           password,
         });
         signIn(token);
@@ -71,26 +74,29 @@ export default function LoginPage() {
         setTimeout(() => {
           navigate("/home");
         }, 1100);
-      } else if (loginType === "cpf") {
-        const token = await AuthService.loginCpf({
-          cpf,
-          password,
-        });
-        signIn(token);
-        toast.success("Login realizado com sucesso!");
-        setTimeout(() => {
-          navigate("/home");
-        }, 1100);
-      } else if (loginType === "cnpj") {
-        const token = await AuthService.loginCnpj({
-          cnpj,
-          password,
-        });
-        signIn(token);
-        toast.success("Login realizado com sucesso!");
-        setTimeout(() => {
-          navigate("/home");
-        }, 1100);
+      } else if (loginType === "email") {
+        // Caso o login seja por email, tenta primeiro `user`, depois `department` e, por último, `admin`.
+        try {
+          token = await AuthService.login.user({ email, password });
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (error) {
+          try {
+            token = await AuthService.login.department({ email, password });
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (error) {
+            token = await AuthService.login.admin({ email, password });
+          }
+        }
+
+        if (token) {
+          signIn(token);
+          toast.success("Login realizado com sucesso!");
+          setTimeout(() => {
+            navigate("/home");
+          }, 1100);
+        } else {
+          throw new Error("Email ou senha incorretos.");
+        }
       }
     } catch (error) {
       setError("Erro ao fazer login. Verifique suas credenciais.");
