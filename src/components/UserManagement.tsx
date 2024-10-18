@@ -117,7 +117,7 @@ export const UserManagement = ({
         return;
       }
 
-      const data = await DocumentService.getFilesByUserDepartment(token);
+      const data = await DocumentService.getAllDocuments(token);
       setDocuments(data);
     };
 

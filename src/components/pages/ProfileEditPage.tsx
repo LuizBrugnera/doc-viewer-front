@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   User,
   Mail,
-  Calendar,
   Lock,
   CreditCard,
   Save,
@@ -28,20 +27,20 @@ import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
 
 export default function ProfileEditPage() {
-  const { user } = useAuth();
+  const { userInfo, user, token } = useAuth();
 
   const [formData, setFormData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    cpf: user?.cpf || "",
-    cnpj: user?.cnpj || "",
-    phone: user?.phone || "",
-    rg: user?.rg || "",
-    birthdate: user?.birthdate || "",
+    name: "",
+    email: "",
+    cpf: "",
+    cnpj: "",
+    phone: "",
+    rg: "",
     currentPassword: "",
     newPassword: "",
     confirmNewPassword: "",
   });
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -50,8 +49,6 @@ export default function ProfileEditPage() {
   const goToHome = () => {
     navigate("/home");
   };
-  const { token, updateDataToken } = useAuth();
-
   const formatCPF = (value: string) => {
     return value
       .replace(/\D/g, "")
@@ -125,7 +122,6 @@ export default function ProfileEditPage() {
         cnpj: formData.cnpj || null,
         phone: formData.phone || null,
         rg: formData.rg || null,
-        birthdate: formData.birthdate || null,
       };
 
       if (!token) {
@@ -133,9 +129,14 @@ export default function ProfileEditPage() {
         throw new Error("Token não encontrado.");
       }
 
+      /* 
+      if role === admin 
+      department etc
+
+
+      */
+
       await UserService.updateInfo(token, userData);
-      const newToken = await AuthService.updateDataToken(token);
-      updateDataToken(newToken);
 
       setSuccess("Perfil atualizado com sucesso!");
     } catch (err) {
@@ -185,6 +186,26 @@ export default function ProfileEditPage() {
     }
   };
 
+  useEffect(() => {
+    if (userInfo) {
+      const localUserInfo = {
+        name: userInfo?.name || "",
+        email: userInfo?.email || "",
+        cpf: userInfo?.cpf || "",
+        cnpj: userInfo?.cnpj || "",
+        phone: userInfo?.phone || "",
+        rg: userInfo?.rg || "",
+        currentPassword: "",
+        newPassword: "",
+        confirmNewPassword: "",
+      };
+      if (user?.role === "user") {
+        localUserInfo.email = userInfo?.mainEmail || "";
+      }
+      setFormData(localUserInfo);
+    }
+  }, [userInfo]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Card className="max-w-2xl mx-auto">
@@ -232,35 +253,6 @@ export default function ProfileEditPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="cpf">CPF</Label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <Input
-                      id="cpf"
-                      name="cpf"
-                      value={formData.cpf}
-                      onChange={handleChange}
-                      className="pl-10"
-                      required
-                      maxLength={14}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cnpj">CNPJ</Label>
-                  <div className="relative">
-                    <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <Input
-                      id="cnpj"
-                      name="cnpj"
-                      value={formData.cnpj}
-                      onChange={handleChange}
-                      className="pl-10"
-                      maxLength={18}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
                   <Label htmlFor="phone">Telefone</Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -275,36 +267,56 @@ export default function ProfileEditPage() {
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rg">RG</Label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <Input
-                      id="rg"
-                      name="rg"
-                      value={formData.rg}
-                      onChange={handleChange}
-                      className="pl-10"
-                      required
-                      maxLength={9}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="birthdate">Data de Nascimento</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <Input
-                      id="birthdate"
-                      name="birthdate"
-                      value={formData.birthdate}
-                      onChange={handleChange}
-                      className="pl-10"
-                      required
-                      maxLength={10}
-                    />
-                  </div>
-                </div>
+                {user?.role === "user" && (
+                  <Fragment>
+                    <div className="space-y-2">
+                      <Label htmlFor="cpf">CPF</Label>
+                      <div className="relative">
+                        <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <Input
+                          id="cpf"
+                          name="cpf"
+                          value={formData.cpf}
+                          onChange={handleChange}
+                          className="pl-10"
+                          required
+                          maxLength={14}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cnpj">CNPJ</Label>
+                      <div className="relative">
+                        <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <Input
+                          id="cnpj"
+                          name="cnpj"
+                          value={formData.cnpj}
+                          onChange={handleChange}
+                          className="pl-10"
+                          maxLength={18}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="rg">RG</Label>
+                      <div className="relative">
+                        <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <Input
+                          id="rg"
+                          name="rg"
+                          value={formData.rg}
+                          onChange={handleChange}
+                          className="pl-10"
+                          required
+                          maxLength={9}
+                        />
+                      </div>
+                    </div>
+                  </Fragment>
+                )}
+
                 {error && (
                   <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>

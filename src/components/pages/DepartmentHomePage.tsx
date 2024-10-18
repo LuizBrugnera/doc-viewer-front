@@ -124,7 +124,7 @@ export default function DepartmentHomePage({
           return;
         }
 
-        const data = await UserService.findByDepartment(token);
+        const data = await UserService.findAllUsers(token);
         setUsers(data);
       } catch (error) {
         console.error("Erro ao buscar clientes:", error);

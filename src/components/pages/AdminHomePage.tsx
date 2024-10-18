@@ -44,10 +44,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Document, Log, User } from "@/types/GlobalTypes";
+import { Department, Document, User } from "@/types/GlobalTypes";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
-import { LogService } from "@/services/LogService";
 import {
   folderFormat,
   foldersToAcess,
@@ -58,6 +57,7 @@ import FolderSistemToUpload from "../FolderSistemToUpload";
 import { ScrollArea } from "../ui/scroll-area";
 import { UserManagement } from "../UserManagement";
 import { DocumentService } from "@/services/DocumentService";
+import { DepartmentService } from "@/services/DepartmentService";
 
 type AddDepartmentForm = {
   name: string;
@@ -92,9 +92,8 @@ type UpdateUserForm = {
 
 export default function AdminHomePage() {
   const { token } = useAuth();
-  const [selectedDepartment, setSelectedDepartment] = useState<User | null>(
-    null
-  );
+  const [selectedDepartment, setSelectedDepartment] =
+    useState<Department | null>(null);
   const [isErrorUploadOpen, setIsErrorUploadOpen] = useState(false);
   const [filesErrorToUpload, setFilesErrorToUpload] = useState<string[]>([]);
   const [filesSuccessToUpload, setFilesSuccessToUpload] = useState<string[]>(
@@ -103,7 +102,9 @@ export default function AdminHomePage() {
   const [isAddDepartmentOpen, setIsAddDepartmentOpen] = useState(false);
   const [isEditDepartmentOpen, setIsEditDepartmentOpen] = useState(false);
   const [isDataDepartmentOpen, setIsDataDepartmentOpen] = useState(false);
-  const [seeDataDepartment, setSeeDataDepartment] = useState<User | null>(null);
+  const [seeDataDepartment, setSeeDataDepartment] = useState<Department | null>(
+    null
+  );
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isEditClientOpen, setIsEditClientOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] =
@@ -121,14 +122,12 @@ export default function AdminHomePage() {
   );
   const [isDeleteDepartmentOpen, setIsDeleteDepartmentOpen] = useState(false);
   const [isDeleteClientOpen, setIsDeleteClientOpen] = useState(false);
-  const [deletingDepartment, setDeletingDepartment] = useState<User | null>(
-    null
-  );
+  const [deletingDepartment, setDeletingDepartment] =
+    useState<Department | null>(null);
   const [deletingClient, setDeletingClient] = useState<User | null>(null);
   const [clientSearchQuery, setClientSearchQuery] = useState("");
-  const [departments, setDepartments] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [clients, setClients] = useState<User[]>([]);
-  const [logs, setLogs] = useState<Log[]>([]);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
   const [addDepartmentForm, setAddDepartmentForm] =
     useState<AddDepartmentForm | null>({
@@ -161,7 +160,8 @@ export default function AdminHomePage() {
       alert("Usuário não autenticado.");
       return;
     }
-    const data = await UserService.findAllUserDepartaments(token);
+    const data = await DepartmentService.findAllDepartaments(token);
+    console.log(data);
     setDepartments(data);
   };
   useEffect(() => {
@@ -175,7 +175,7 @@ export default function AdminHomePage() {
         return;
       }
 
-      const data = await UserService.findByDepartment(token);
+      const data = await UserService.findAllUsers(token);
       setClients(data);
     } catch (error) {
       console.error("Erro ao buscar clientes:", error);
@@ -208,14 +208,14 @@ export default function AdminHomePage() {
         return;
       }
 
-      const data = await DocumentService.getFilesByUserDepartment(token);
+      const data = await DocumentService.getAllDocuments(token);
       setDocuments(data);
     };
 
     fetchDocuments();
   }, [token]);
 
-  const handleSelectDepartment = (department: User | null) => {
+  const handleSelectDepartment = (department: Department | null) => {
     setSelectedDepartment(department);
   };
 
@@ -270,7 +270,7 @@ export default function AdminHomePage() {
     }
   };
 
-  const handleSelectDepartmentData = (department: User | null) => {
+  const handleSelectDepartmentData = (department: Department | null) => {
     setSeeDataDepartment(department);
     setIsDataDepartmentOpen(true);
   };
@@ -308,7 +308,7 @@ export default function AdminHomePage() {
     setIsAddDepartmentOpen(false);
   };
 
-  const handleEditDepartment = (department: User) => {
+  const handleEditDepartment = (department: Department) => {
     setEditingDepartment({
       id: +department.id,
       name: department.name,
@@ -355,7 +355,7 @@ export default function AdminHomePage() {
     setIsEditDepartmentOpen(false);
   };
 
-  const handleDeleteDepartment = (department: User) => {
+  const handleDeleteDepartment = (department: Department) => {
     setDeletingDepartment(department);
     setIsDeleteDepartmentOpen(true);
   };
@@ -491,22 +491,6 @@ export default function AdminHomePage() {
       setDeletingClient(null);
     }
   };
-
-  useEffect(() => {
-    const fetchLogsOfDepartment = async () => {
-      if (!token) {
-        alert("Usuário não autenticado.");
-        return;
-      }
-
-      if (!selectedDepartment) {
-        return;
-      }
-      const data = await LogService.findByUser(token, +selectedDepartment.id);
-      setLogs(data);
-    };
-    fetchLogsOfDepartment();
-  }, [selectedDepartment, token]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -706,28 +690,33 @@ export default function AdminHomePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <Select
-                    onValueChange={(value) =>
+                  <select
+                    id="departmentDepartment"
+                    value={selectedDepartment?.id || ""}
+                    onChange={(e) => {
+                      const selectedValue = e.target.value;
                       handleSelectDepartment(
-                        departments.find((c) => +c.id === parseInt(value)) ||
-                          null
-                      )
-                    }
+                        departments.find(
+                          (department) =>
+                            department.id.toString() === selectedValue
+                        ) || null
+                      );
+                    }}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                   >
-                    <SelectTrigger className="w-64">
-                      <SelectValue placeholder="Selecione uma empresa" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {departments.map((department) => (
-                        <SelectItem
-                          key={department.id}
-                          value={department.id.toString()}
-                        >
-                          {department.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <option value="" disabled>
+                      Selecione uma empresa
+                    </option>
+                    {departments.map((department) => (
+                      <option
+                        key={department.id}
+                        value={department.id.toString()}
+                      >
+                        {department.name}
+                      </option>
+                    ))}
+                  </select>
+
                   {selectedDepartment ? (
                     <Table>
                       <TableHeader>
@@ -738,7 +727,7 @@ export default function AdminHomePage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {logs.map((log) => (
+                        {selectedDepartment.logs.map((log) => (
                           <TableRow key={log.id}>
                             <TableCell>{log.action}</TableCell>
                             <TableCell>
@@ -1456,13 +1445,14 @@ export default function AdminHomePage() {
                   {seeDataDepartment?.phone || "Não informado"}
                 </div>
               </div>
-
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="cod" className="text-left col-span-1">
-                  COD
+                <Label htmlFor="phone" className="text-left col-span-1">
+                  Pastas com Acesso
                 </Label>
-                <div id="cod" className="col-span-3 text-left">
-                  {seeDataDepartment?.cod || "Não informado"}
+                <div id="folders" className="col-span-3 text-left">
+                  {seeDataDepartment?.foldersAccess.map(
+                    (folder) => `${folderFormat[folder.foldername]}, `
+                  )}
                 </div>
               </div>
             </div>
