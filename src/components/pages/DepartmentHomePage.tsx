@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,18 +32,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentService } from "@/services/DocumentService";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
-import { Document, User } from "@/types/GlobalTypes";
+import { Document, ResponseUpload, User } from "@/types/GlobalTypes";
 import FolderSistemToUpload from "../FolderSistemToUpload";
-import { folderFormat } from "../utils";
+import { folderFormat, formatMySqlToBrDate, stateFormat } from "../utils";
 import { UserManagement } from "../UserManagement";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
 
-export default function DepartmentHomePage({
-  foldersAcess,
-}: {
-  foldersAcess: string[];
-}) {
-  const { token } = useAuth();
+export default function DepartmentHomePage() {
+  const { token, user, userInfo, updateUserInfo } = useAuth();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
   const [isEditDocumentOpen, setIsEditDocumentOpen] = useState(false);
@@ -55,11 +59,13 @@ export default function DepartmentHomePage({
   const [documents, setDocuments] = useState<Document[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isErrorUploadOpen, setIsErrorUploadOpen] = useState(false);
-  const [filesErrorToUpload, setFilesErrorToUpload] = useState<string[]>([]);
-  const [filesSuccessToUpload, setFilesSuccessToUpload] = useState<string[]>(
-    []
-  );
-
+  const [filesErrorToUpload, setFilesErrorToUpload] = useState<
+    ResponseUpload[]
+  >([]);
+  const [filesSuccessToUpload, setFilesSuccessToUpload] = useState<
+    ResponseUpload[]
+  >([]);
+  console.log(userInfo);
   const handleAddDocument = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -93,7 +99,7 @@ export default function DepartmentHomePage({
 
       const newDoc: Document = {
         id: result.id,
-        userId: +selectedUser.id,
+        user: selectedUser,
         name: newDocumentName,
         type: newDocumentFile.name.split(".").pop() || "",
         date: new Date().toISOString(),
@@ -109,6 +115,21 @@ export default function DepartmentHomePage({
       console.error("Erro ao fazer upload do arquivo:", error);
       alert("Erro ao fazer upload do arquivo.");
     }
+  };
+  function extractId(text: string) {
+    const match = text.match(/\{(\d+)\}/);
+    return match ? parseInt(match[1], 10) : null;
+  }
+  const handleHoldDocument = async (docId: number, logId: number) => {
+    DocumentService.holdDocument(token!, docId, logId).then(() => {
+      updateUserInfo();
+    });
+  };
+
+  const handleDiscartDocument = async (docId: number, logId: number) => {
+    DocumentService.discartDocument(token!, docId, logId).then(() => {
+      updateUserInfo();
+    });
   };
 
   const handleUpdateDocument = (e: React.FormEvent) => {
@@ -156,6 +177,7 @@ export default function DepartmentHomePage({
           <TabsList className="mb-4">
             <TabsTrigger value="users">Administração de Usuários</TabsTrigger>
             <TabsTrigger value="upload">Upload de Arquivos</TabsTrigger>
+            <TabsTrigger value="historic">Meu Histórico</TabsTrigger>
           </TabsList>
           <UserManagement
             documents={documents}
@@ -175,11 +197,135 @@ export default function DepartmentHomePage({
               </CardHeader>
               <CardContent>
                 <FolderSistemToUpload
-                  foldersAcess={foldersAcess}
+                  foldersAcess={user?.folderAccess}
                   setFilesErrorToUpload={setFilesErrorToUpload}
                   setIsErrorUploadOpen={setIsErrorUploadOpen}
                   setFilesSuccessToUpload={setFilesSuccessToUpload}
                 />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="historic">
+            <Card>
+              <CardHeader>
+                <CardTitle>Meus Histórico</CardTitle>
+                <CardDescription>
+                  Visualize o status das suas ações
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ação</TableHead>
+                        <TableHead>Data e Hora</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Meus Controles</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {userInfo &&
+                        userInfo.logs &&
+                        userInfo!.logs
+                          .sort((a, b) => {
+                            const dateComparison =
+                              new Date(b.date).getTime() -
+                              new Date(a.date).getTime();
+                            if (dateComparison !== 0) return dateComparison;
+                            return a.action.localeCompare(b.action);
+                          })
+                          .map((log, index, logsArray) => {
+                            const previousLog = logsArray[index - 1];
+                            const isNewDay =
+                              !previousLog ||
+                              new Date(log.date).toDateString() !==
+                                new Date(previousLog.date).toDateString();
+
+                            return (
+                              <Fragment key={log.id}>
+                                {isNewDay && (
+                                  <>
+                                    {index !== 0 && <tr className="h-4" />}{" "}
+                                    {/* Linha em branco entre dias */}
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={4}
+                                        className="text-left"
+                                      >
+                                        <strong>
+                                          {new Date(
+                                            log.date
+                                          ).toLocaleDateString("pt-BR", {
+                                            weekday: "long",
+                                            year: "numeric",
+                                            month: "long",
+                                            day: "numeric",
+                                          })}
+                                        </strong>
+                                      </TableCell>
+                                    </TableRow>
+                                  </>
+                                )}
+                                <TableRow>
+                                  <TableCell>{log.action}</TableCell>
+                                  <TableCell>
+                                    {formatMySqlToBrDate(log.date)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {log.state
+                                      ? stateFormat[log.state]
+                                      : "Sucesso!"}
+                                  </TableCell>
+                                  <TableCell>{log.description}</TableCell>
+                                  <TableCell>
+                                    {log.state === "failure" && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => console.log("Delete")}
+                                      >
+                                        Tentar Enviar Novamente
+                                      </Button>
+                                    )}
+                                    {log.state === "conflict" && (
+                                      <div className="flex space-x-2">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleHoldDocument(
+                                              +extractId(log.description)!,
+                                              log.id
+                                            )
+                                          }
+                                        >
+                                          Enviar
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="ml-2"
+                                          onClick={() =>
+                                            handleDiscartDocument(
+                                              +extractId(log.description)!,
+                                              log.id
+                                            )
+                                          }
+                                        >
+                                          Excluir
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              </Fragment>
+                            );
+                          })}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -217,9 +363,12 @@ export default function DepartmentHomePage({
                     <SelectValue placeholder="Selecione a pasta" />
                   </SelectTrigger>
                   <SelectContent>
-                    {foldersAcess.map((folder) => (
-                      <SelectItem key={folder} value={folder}>
-                        {folderFormat[folder]}
+                    {user?.folderAccess?.map((folder) => (
+                      <SelectItem
+                        key={folder.foldername}
+                        value={folder.foldername}
+                      >
+                        {folderFormat[folder.foldername]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -322,17 +471,17 @@ export default function DepartmentHomePage({
           <ScrollArea className="max-h-[60vh] pr-4">
             <DialogTitle>Documentos não enviados corretamente</DialogTitle>
             <div className="grid gap-4 py-4">
-              {filesErrorToUpload.map((filename) => {
+              {filesErrorToUpload.map((errorUpload) => {
                 return (
                   <div
-                    key={filename}
+                    key={errorUpload.name}
                     className="grid grid-cols-4 items-center gap-4"
                   >
                     <Label htmlFor="name" className="text-left col-span-1">
                       Nome do Arquivo
                     </Label>
                     <div id="name" className="col-span-3 text-left">
-                      {filename}
+                      {errorUpload.name}
                     </div>
                   </div>
                 );
@@ -340,10 +489,10 @@ export default function DepartmentHomePage({
             </div>
             <DialogTitle>Documentos enviados com sucesso</DialogTitle>
             <div className="grid gap-4 py-4">
-              {filesSuccessToUpload.map((filename) => {
+              {filesSuccessToUpload.map((successUpload) => {
                 return (
                   <div
-                    key={filename}
+                    key={successUpload.name}
                     className="grid grid-cols-4 items-center gap-4"
                   >
                     <Label
@@ -353,7 +502,7 @@ export default function DepartmentHomePage({
                       Nome do Arquivo
                     </Label>
                     <div id="name" className="col-span-3 text-left">
-                      {filename}
+                      {successUpload.name}
                     </div>
                   </div>
                 );

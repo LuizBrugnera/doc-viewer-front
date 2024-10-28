@@ -17,7 +17,7 @@ import useAuth from "@/security/UseAuth";
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -39,7 +39,7 @@ export default function NotificationBell() {
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!token) return;
-
+      if (user?.role !== "user") return;
       const data = await NotificationService.getNotificationByUser(token);
       setNotifications(data);
     };

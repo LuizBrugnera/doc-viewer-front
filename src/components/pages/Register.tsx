@@ -101,7 +101,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await AuthService.register({
+      await AuthService.register.user({
         name: formData.fullName,
         email: formData.email,
         password: formData.password,
@@ -110,7 +110,7 @@ export default function RegisterPage() {
         birthdate: formData.birthDate,
       });
       toast.success("Registro realizado com sucesso!");
-      const token = await AuthService.login({
+      const token = await AuthService.login.user({
         email: formData.email,
         password: formData.password,
       });

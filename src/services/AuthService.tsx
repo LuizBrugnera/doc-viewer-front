@@ -1,17 +1,17 @@
 import axios from "axios";
 import {
+  DepartmentCreate,
   EmailLogin,
   InfoCommum,
   LoginData,
   RegisterData,
 } from "../types/GlobalTypes";
-
+// http://167.88.33.108/api/
 const API_URL = "http://localhost:3000/api/v1/auth";
 
 export const AuthService = {
   login: {
     async user(data: LoginData): Promise<string> {
-      console.log(data);
       const response = await axios.post(`${API_URL}/user/login`, data);
       return response.data;
     },
@@ -38,7 +38,7 @@ export const AuthService = {
       });
       return response.data;
     },
-    async department(data: EmailLogin, token: string): Promise<string> {
+    async department(data: DepartmentCreate, token: string): Promise<string> {
       const response = await axios.post(
         `${API_URL}/department/register`,
         data,

@@ -1,7 +1,7 @@
 export interface User {
   id: string;
   name: string;
-  email: string;
+  mainEmail: string;
   password: string;
   department: string;
   role: "admin" | "user" | "department" | "exames";
@@ -12,6 +12,30 @@ export interface User {
   cod?: string;
   birthdate?: string;
   dodcuments?: Document[];
+  adminLogs?: Log[];
+  folderAccess?: { foldername: string }[];
+}
+
+export interface Admin {
+  id?: string;
+  name: string;
+  email: string;
+  phone: string;
+  password?: string;
+}
+
+export interface AdminUpdate {
+  id: number;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+export interface DepartmentUpdate {
+  id: number;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
 }
 
 export interface FoldersAccess {
@@ -30,9 +54,19 @@ export interface Department {
   logs: Log[];
 }
 
+export interface DepartmentCreate {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  department: string;
+  foldersAccess: { foldername: string }[];
+}
+
 export interface AuthContextData {
   user: User | null;
   userInfo: InfoCommum | null;
+  updateUserInfo: () => void;
   token: string | null;
   signIn: (token: string) => void;
   signOut: () => void;
@@ -87,6 +121,7 @@ export interface DefaultModalProps {
 }
 
 export interface UserInfo {
+  id?: number | null;
   name?: string | null;
   email?: string | null;
   cpf?: string | null;
@@ -111,8 +146,13 @@ export interface Document {
   type: string;
   date: string;
   description: string;
-  userId: number;
+  user: Partial<User>;
   folder: string;
+}
+
+export interface ResponseUpload {
+  name: string;
+  status: number;
 }
 
 export interface File {
@@ -144,4 +184,6 @@ export interface InfoCommum {
   cod?: string;
   phone?: string;
   department?: string;
+  adminLogs?: Log[];
+  logs?: Log[];
 }

@@ -25,6 +25,8 @@ import { useNavigate } from "react-router-dom";
 import { AuthService } from "@/services/AuthService";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
+import { AdminService } from "@/services/AdminService";
+import { DepartmentService } from "@/services/DepartmentService";
 
 export default function ProfileEditPage() {
   const { userInfo, user, token } = useAuth();
@@ -32,6 +34,7 @@ export default function ProfileEditPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    mainEmail: "",
     cpf: "",
     cnpj: "",
     phone: "",
@@ -115,28 +118,42 @@ export default function ProfileEditPage() {
     setIsLoading(true);
 
     try {
-      const userData = {
-        name: formData.name || null,
-        email: formData.email || null,
-        cpf: formData.cpf || null,
-        cnpj: formData.cnpj || null,
-        phone: formData.phone || null,
-        rg: formData.rg || null,
-      };
-
       if (!token) {
         navigate("/login");
         throw new Error("Token não encontrado.");
       }
 
-      /* 
-      if role === admin 
-      department etc
+      if (user?.role === "user") {
+        const userData = {
+          id: Number(user?.id) || null,
+          name: formData.name || null,
+          email: formData.email || null,
+          cpf: formData.cpf || null,
+          cnpj: formData.cnpj || null,
+          phone: formData.phone || null,
+          rg: formData.rg || null,
+          mainEmail: formData.email || null,
+        };
 
-
-      */
-
-      await UserService.updateInfo(token, userData);
+        userData.mainEmail = userInfo?.mainEmail || null;
+        await UserService.updateInfo(token, userData);
+      } else if (user?.role === "admin") {
+        const adminData = {
+          id: Number(user?.id)!,
+          name: formData.name || null,
+          email: formData.email || null,
+          phone: formData.phone || null,
+        };
+        await AdminService.updateAdmin(token, adminData);
+      } else if (user?.role === "department") {
+        const departmentData = {
+          id: Number(user?.id),
+          name: formData.name || null,
+          email: formData.email || null,
+          phone: formData.phone || null,
+        };
+        await DepartmentService.updateDepartment(token, departmentData);
+      }
 
       setSuccess("Perfil atualizado com sucesso!");
     } catch (err) {
@@ -191,6 +208,7 @@ export default function ProfileEditPage() {
       const localUserInfo = {
         name: userInfo?.name || "",
         email: userInfo?.email || "",
+        mainEmail: userInfo?.mainEmail || "",
         cpf: userInfo?.cpf || "",
         cnpj: userInfo?.cnpj || "",
         phone: userInfo?.phone || "",

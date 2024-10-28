@@ -20,7 +20,7 @@ export const foldersToAcess = {
     "relatorioEventoS2220",
     "relatorioEventoS2210",
   ],
-  vendas: ["contratos", "ordensServico"], // poder vir do db
+  vendas: ["contratos", "ordensServico"],
   all: [
     "boletos",
     "notasFiscais",
@@ -60,6 +60,12 @@ export const folderUpFoldersFormat = {
   faturamento: "Faturamento",
   esocial: "E-social",
   vendas: "Vendas",
+} as { [key: string]: string };
+
+export const stateFormat = {
+  success: "Sucesso!",
+  failure: "Falha!",
+  conflict: "Conflito!",
 } as { [key: string]: string };
 
 export const categoriesDefault = [

@@ -50,6 +50,7 @@ export const UserManagement = ({
   };
   const handleSelectUser = (client: User) => {
     setSelectedUser(client);
+    console.log("usuario selecionado - " + client);
   };
 
   const handleDownload = async (
@@ -105,7 +106,7 @@ export const UserManagement = ({
   useEffect(() => {
     if (selectedUser) {
       setUserDocuments(
-        filteredDocuments.filter((doc) => +doc.userId === +selectedUser.id)
+        filteredDocuments.filter((doc) => +doc.user.id! === +selectedUser.id)
       );
     }
   }, [selectedUser, documentSearchQuery, documents]);
@@ -127,7 +128,7 @@ export const UserManagement = ({
   const filteredUsers = users.filter(
     (client) =>
       client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(clientSearchQuery.toLowerCase())
+      client.mainEmail.toLowerCase().includes(clientSearchQuery.toLowerCase())
   );
 
   const filteredDocuments = documents.filter(
@@ -172,7 +173,7 @@ export const UserManagement = ({
                     {filteredUsers.slice(0, usersDisplayed).map((client) => (
                       <TableRow key={client.id}>
                         <TableCell>{client.name}</TableCell>
-                        <TableCell>{client.email}</TableCell>
+                        <TableCell>{client.mainEmail}</TableCell>
                         <TableCell>
                           <Button
                             variant="outline"
@@ -267,7 +268,7 @@ export const UserManagement = ({
                                   handleDownload(
                                     document.id,
                                     document.name,
-                                    document.userId
+                                    +document.user.id!
                                   )
                                 }
                               >

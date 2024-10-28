@@ -31,7 +31,7 @@ export const UserService = {
   },
 
   async updateInfo(token: string, userData: UserInfo): Promise<void> {
-    await axios.put(`${API_URL}/update-info`, userData, {
+    await axios.put(`${API_URL}/${userData.id}`, userData, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -56,5 +56,4 @@ export const UserService = {
       },
     });
   },
-  
 };

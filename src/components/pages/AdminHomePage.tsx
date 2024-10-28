@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Search,
   FileText,
@@ -44,7 +44,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Department, Document, User } from "@/types/GlobalTypes";
+import {
+  Department,
+  Document,
+  ResponseUpload,
+  User,
+} from "@/types/GlobalTypes";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
 import {
@@ -52,12 +57,15 @@ import {
   foldersToAcess,
   folderUpFoldersFormat,
   formatMySqlToBrDate,
+  stateFormat,
 } from "../utils";
 import FolderSistemToUpload from "../FolderSistemToUpload";
 import { ScrollArea } from "../ui/scroll-area";
 import { UserManagement } from "../UserManagement";
 import { DocumentService } from "@/services/DocumentService";
 import { DepartmentService } from "@/services/DepartmentService";
+import { Checkbox } from "../ui/checkbox";
+import { AuthService } from "@/services/AuthService";
 
 type AddDepartmentForm = {
   name: string;
@@ -66,6 +74,7 @@ type AddDepartmentForm = {
   password: string;
   confirmPassword: string;
   department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
+  foldersAccess: { foldername: string }[];
 };
 
 type UpdateDepartmentForm = {
@@ -76,12 +85,13 @@ type UpdateDepartmentForm = {
   password: string;
   confirmPassword: string;
   department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
+  foldersAccess: { foldername: string }[];
 };
 
 type UpdateUserForm = {
   id: number;
   name: string;
-  email: string;
+  mainEmail: string;
   cod: string;
   phone: string;
   password: string;
@@ -91,14 +101,16 @@ type UpdateUserForm = {
 };
 
 export default function AdminHomePage() {
-  const { token } = useAuth();
+  const { token, userInfo, updateUserInfo } = useAuth();
   const [selectedDepartment, setSelectedDepartment] =
     useState<Department | null>(null);
   const [isErrorUploadOpen, setIsErrorUploadOpen] = useState(false);
-  const [filesErrorToUpload, setFilesErrorToUpload] = useState<string[]>([]);
-  const [filesSuccessToUpload, setFilesSuccessToUpload] = useState<string[]>(
-    []
-  );
+  const [filesErrorToUpload, setFilesErrorToUpload] = useState<
+    ResponseUpload[]
+  >([]);
+  const [filesSuccessToUpload, setFilesSuccessToUpload] = useState<
+    ResponseUpload[]
+  >([]);
   const [isAddDepartmentOpen, setIsAddDepartmentOpen] = useState(false);
   const [isEditDepartmentOpen, setIsEditDepartmentOpen] = useState(false);
   const [isDataDepartmentOpen, setIsDataDepartmentOpen] = useState(false);
@@ -116,6 +128,7 @@ export default function AdminHomePage() {
       password: "",
       confirmPassword: "",
       department: "",
+      foldersAccess: [],
     });
   const [editingClient, setEditingClient] = useState<UpdateUserForm | null>(
     null
@@ -137,6 +150,7 @@ export default function AdminHomePage() {
       password: "",
       confirmPassword: "",
       department: "financeiro",
+      foldersAccess: [],
     });
 
   const [usersDisplayed, setUsersDisplayed] = useState(50);
@@ -153,20 +167,27 @@ export default function AdminHomePage() {
   const filteredUsers = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(clientSearchQuery.toLowerCase()) ||
-      client.email.toLowerCase().includes(clientSearchQuery.toLowerCase())
+      client.mainEmail.toLowerCase().includes(clientSearchQuery.toLowerCase())
   );
+
   const fetchDepartments = async () => {
     if (!token) {
       alert("Usuário não autenticado.");
       return;
     }
     const data = await DepartmentService.findAllDepartaments(token);
-    console.log(data);
     setDepartments(data);
   };
-  useEffect(() => {
-    fetchDepartments();
-  }, [token]);
+
+  const fetchDocuments = async () => {
+    if (!token) {
+      alert("Usuário não autenticado.");
+      return;
+    }
+
+    const data = await DocumentService.getAllDocuments(token);
+    setDocuments(data);
+  };
 
   const fetchClients = async () => {
     try {
@@ -176,6 +197,7 @@ export default function AdminHomePage() {
       }
 
       const data = await UserService.findAllUsers(token);
+
       setClients(data);
     } catch (error) {
       console.error("Erro ao buscar clientes:", error);
@@ -184,14 +206,20 @@ export default function AdminHomePage() {
   };
 
   useEffect(() => {
+    fetchDepartments();
     fetchClients();
+    fetchDocuments();
   }, [token]);
 
+  function extractId(text: string) {
+    const match = text.match(/\{(\d+)\}/);
+    return match ? parseInt(match[1], 10) : null;
+  }
   useEffect(() => {
     setEditingClient({
       id: 1,
       name: "",
-      email: "",
+      mainEmail: "",
       phone: "",
       rg: "",
       cnpj: "",
@@ -200,20 +228,6 @@ export default function AdminHomePage() {
       cod: "",
     });
   }, [isAddClientOpen]);
-
-  useEffect(() => {
-    const fetchDocuments = async () => {
-      if (!token) {
-        alert("Usuário não autenticado.");
-        return;
-      }
-
-      const data = await DocumentService.getAllDocuments(token);
-      setDocuments(data);
-    };
-
-    fetchDocuments();
-  }, [token]);
 
   const handleSelectDepartment = (department: Department | null) => {
     setSelectedDepartment(department);
@@ -244,22 +258,9 @@ export default function AdminHomePage() {
         return;
       }
 
-      const result = await DocumentService.uploadFile(
-        token,
-        +selectedUser.id,
-        formData
-      );
+      await DocumentService.uploadFile(token, +selectedUser.id, formData);
 
-      const newDoc: Document = {
-        id: result.id,
-        userId: +selectedUser.id,
-        name: newDocumentName,
-        type: newDocumentDescription,
-        date: new Date().toISOString(),
-        description: newDocumentDescription,
-        folder: newDocumentFolder,
-      };
-      setDocuments([...documents, newDoc]);
+      await fetchDocuments();
       setNewDocumentName("");
       setNewDocumentDescription("");
       setNewDocumentFile(null);
@@ -275,8 +276,9 @@ export default function AdminHomePage() {
     setIsDataDepartmentOpen(true);
   };
 
-  const handleAddDepartment = (e: React.FormEvent) => {
+  const handleAddDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (addDepartmentForm) {
       if (addDepartmentForm.password !== addDepartmentForm.confirmPassword) {
         alert("As senhas não coincidem.");
@@ -286,26 +288,65 @@ export default function AdminHomePage() {
       const data = {
         name: addDepartmentForm.name,
         email: addDepartmentForm.email,
+        phone: addDepartmentForm.phone,
         password: addDepartmentForm.password,
         department: addDepartmentForm.department,
-        phone: addDepartmentForm.phone,
-        role: "department",
+        foldersAccess: addDepartmentForm.foldersAccess,
       };
 
       if (!token) {
         alert("Token expirado! Logue novamente.");
         return;
       }
-      UserService.createUser(token, data);
-
-      setTimeout(() => {
-        fetchDepartments();
-      }, 3000);
+      await AuthService.register.department(data, token);
+      await fetchDepartments();
 
       setAddDepartmentForm(null);
       setIsAddDepartmentOpen(false);
     }
     setIsAddDepartmentOpen(false);
+  };
+
+  useEffect(() => {
+    if (addDepartmentForm?.department) {
+      const defaultFolders = foldersToAcess[addDepartmentForm.department] || [];
+      setAddDepartmentForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              foldersAccess: defaultFolders.map((folder) => ({
+                foldername: folder,
+              })),
+            }
+          : null
+      );
+    }
+  }, [addDepartmentForm?.department]);
+
+  const handleFolderChange = (folder: string, checked: boolean) => {
+    setAddDepartmentForm((prev) =>
+      prev
+        ? {
+            ...prev,
+            foldersAccess: checked
+              ? [...prev.foldersAccess, { foldername: folder }]
+              : prev.foldersAccess.filter((f) => f.foldername !== folder),
+          }
+        : null
+    );
+  };
+
+  const handleFolderChangeUpdate = (folder: string, checked: boolean) => {
+    setEditingDepartment((prev) =>
+      prev
+        ? {
+            ...prev,
+            foldersAccess: checked
+              ? [...prev.foldersAccess, { foldername: folder }]
+              : prev.foldersAccess.filter((f) => f.foldername !== folder),
+          }
+        : null
+    );
   };
 
   const handleEditDepartment = (department: Department) => {
@@ -317,11 +358,12 @@ export default function AdminHomePage() {
       password: "",
       confirmPassword: "",
       department: department.department,
+      foldersAccess: department.foldersAccess,
     });
     setIsEditDepartmentOpen(true);
   };
 
-  const handleUpdateDepartment = (e: React.FormEvent) => {
+  const handleUpdateDepartment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingDepartment) {
       if (editingDepartment.password !== editingDepartment.confirmPassword) {
@@ -337,17 +379,16 @@ export default function AdminHomePage() {
         department: editingDepartment.department,
         phone: editingDepartment.phone,
         role: "department",
+        foldersAccess: editingDepartment.foldersAccess,
       };
 
       if (!token) {
         alert("Token expirado! Logue novamente.");
         return;
       }
-      UserService.updateUserByAdmin(token, data);
+      await DepartmentService.updateDepartment(token, data);
 
-      setTimeout(() => {
-        fetchDepartments();
-      }, 3000);
+      await fetchDepartments();
 
       setEditingDepartment(null);
       setIsEditDepartmentOpen(false);
@@ -367,15 +408,17 @@ export default function AdminHomePage() {
         return;
       }
 
-      UserService.deleteUser(token, +deletingDepartment.id).then(() => {
-        setDeletingDepartment(null);
-        setIsDeleteDepartmentOpen(false);
-        fetchDepartments();
-      });
+      DepartmentService.deleteDepartment(token, +deletingDepartment.id).then(
+        () => {
+          setDeletingDepartment(null);
+          setIsDeleteDepartmentOpen(false);
+          fetchDepartments();
+        }
+      );
     }
   };
 
-  const handleAddClient = (e: React.FormEvent) => {
+  const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClient) {
       alert("Por favor, preencha todos os campos.");
@@ -384,7 +427,7 @@ export default function AdminHomePage() {
 
     if (
       !editingClient.name ||
-      !editingClient.email ||
+      !editingClient.mainEmail ||
       !editingClient?.password
     ) {
       alert("Por favor, preencha todos os campos obrigatórios.");
@@ -398,7 +441,7 @@ export default function AdminHomePage() {
 
     const data = {
       name: editingClient.name,
-      email: editingClient.email,
+      mainEmail: editingClient.mainEmail,
       password: editingClient.password,
       confirmPassword: editingClient.confirmPassword,
       rg: editingClient.rg,
@@ -411,20 +454,30 @@ export default function AdminHomePage() {
       alert("Token expirado! Logue novamente.");
       return;
     }
-    UserService.createUser(token, data);
+    await UserService.createUser(token, data);
 
-    setTimeout(() => {
-      fetchClients();
-    }, 3000);
+    await fetchClients();
 
     setIsAddClientOpen(false);
+  };
+
+  const handleHoldDocument = async (docId: number, logId: number) => {
+    DocumentService.holdDocument(token!, docId, logId).then(() => {
+      updateUserInfo();
+    });
+  };
+
+  const handleDiscartDocument = async (docId: number, logId: number) => {
+    DocumentService.discartDocument(token!, docId, logId).then(() => {
+      updateUserInfo();
+    });
   };
 
   const handleEditClient = (client: User) => {
     setEditingClient({
       id: +client.id,
       name: client.name,
-      email: client.email,
+      mainEmail: client.mainEmail,
       cod: client.cod || "",
       phone: client.phone || "",
       rg: client.rg || "",
@@ -435,7 +488,7 @@ export default function AdminHomePage() {
     setIsEditClientOpen(true);
   };
 
-  const handleUpdateClient = (e: React.FormEvent) => {
+  const handleUpdateClient = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!editingClient) {
@@ -451,7 +504,7 @@ export default function AdminHomePage() {
     const data = {
       id: editingClient.id,
       name: editingClient.name,
-      email: editingClient.email,
+      mainEmail: editingClient.mainEmail,
       password: editingClient.password,
       phone: editingClient.phone,
       cod: editingClient.cod,
@@ -463,10 +516,10 @@ export default function AdminHomePage() {
       alert("Token expirado! Logue novamente.");
       return;
     }
-    UserService.updateUserByAdminClient(token, data);
-    setTimeout(() => {
-      fetchClients();
-    }, 3000);
+    await UserService.updateInfo(token, data);
+
+    await fetchClients();
+
     setIsEditClientOpen(false);
   };
 
@@ -501,8 +554,9 @@ export default function AdminHomePage() {
             <TabsTrigger value="departments">Departamentos</TabsTrigger>
             <TabsTrigger value="clients">Usuários</TabsTrigger>
             <TabsTrigger value="users">Documentos de Usuários</TabsTrigger>
-            <TabsTrigger value="logs">Logs</TabsTrigger>
             <TabsTrigger value="upload">Enviar Arquivos</TabsTrigger>
+            <TabsTrigger value="logs">Logs</TabsTrigger>
+            <TabsTrigger value="historic">Meu Histórico</TabsTrigger>
           </TabsList>
 
           <TabsContent value="departments">
@@ -630,7 +684,7 @@ export default function AdminHomePage() {
                         <TableRow key={client.id}>
                           {" "}
                           <TableCell>{client.name}</TableCell>{" "}
-                          <TableCell>{client.email}</TableCell>{" "}
+                          <TableCell>{client.mainEmail}</TableCell>{" "}
                           <TableCell>{client.cnpj}</TableCell>{" "}
                           <TableCell>
                             {" "}
@@ -722,20 +776,65 @@ export default function AdminHomePage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Ação</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead>Data e Hora</TableHead>
                           <TableHead>Descrição</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {selectedDepartment.logs.map((log) => (
-                          <TableRow key={log.id}>
-                            <TableCell>{log.action}</TableCell>
-                            <TableCell>
-                              {formatMySqlToBrDate(log.date)}
-                            </TableCell>
-                            <TableCell>{log.description}</TableCell>
-                          </TableRow>
-                        ))}
+                        {selectedDepartment.logs
+                          .sort((a, b) => {
+                            const dateComparison =
+                              new Date(b.date).getTime() -
+                              new Date(a.date).getTime();
+                            if (dateComparison !== 0) return dateComparison;
+                            return a.action.localeCompare(b.action);
+                          })
+                          .map((log, index, logsArray) => {
+                            const previousLog = logsArray[index - 1];
+                            const isNewDay =
+                              !previousLog ||
+                              new Date(log.date).toDateString() !==
+                                new Date(previousLog.date).toDateString();
+
+                            return (
+                              <Fragment key={log.id}>
+                                {isNewDay && (
+                                  <>
+                                    {index !== 0 && <tr className="h-4" />}{" "}
+                                    {/* Linha em branco entre os dias */}
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={3}
+                                        className="text-left"
+                                      >
+                                        <strong>
+                                          {new Date(
+                                            log.date
+                                          ).toLocaleDateString("pt-BR", {
+                                            weekday: "long",
+                                            year: "numeric",
+                                            month: "long",
+                                            day: "numeric",
+                                          })}
+                                        </strong>
+                                      </TableCell>
+                                    </TableRow>
+                                  </>
+                                )}
+                                <TableRow>
+                                  <TableCell>{log.action}</TableCell>
+                                  <TableCell>
+                                    {log.state ? log.state : "Sucesso!"}
+                                  </TableCell>
+                                  <TableCell>
+                                    {formatMySqlToBrDate(log.date)}
+                                  </TableCell>
+                                  <TableCell>{log.description}</TableCell>
+                                </TableRow>
+                              </Fragment>
+                            );
+                          })}
                       </TableBody>
                     </Table>
                   ) : (
@@ -765,6 +864,130 @@ export default function AdminHomePage() {
               </CardContent>
             </Card>
           </TabsContent>
+          <TabsContent value="historic">
+            <Card>
+              <CardHeader>
+                <CardTitle>Meus Histórico</CardTitle>
+                <CardDescription>
+                  Visualize o status das suas ações
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Ação</TableHead>
+                        <TableHead>Data e Hora</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Meus Controles</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {userInfo &&
+                        userInfo.adminLogs &&
+                        userInfo!.adminLogs
+                          .sort((a, b) => {
+                            const dateComparison =
+                              new Date(b.date).getTime() -
+                              new Date(a.date).getTime();
+                            if (dateComparison !== 0) return dateComparison;
+                            return a.action.localeCompare(b.action);
+                          })
+                          .map((log, index, logsArray) => {
+                            const previousLog = logsArray[index - 1];
+                            const isNewDay =
+                              !previousLog ||
+                              new Date(log.date).toDateString() !==
+                                new Date(previousLog.date).toDateString();
+
+                            return (
+                              <Fragment key={log.id}>
+                                {isNewDay && (
+                                  <>
+                                    {index !== 0 && <tr className="h-4" />}{" "}
+                                    {/* Linha em branco entre dias */}
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={4}
+                                        className="text-left"
+                                      >
+                                        <strong>
+                                          {new Date(
+                                            log.date
+                                          ).toLocaleDateString("pt-BR", {
+                                            weekday: "long",
+                                            year: "numeric",
+                                            month: "long",
+                                            day: "numeric",
+                                          })}
+                                        </strong>
+                                      </TableCell>
+                                    </TableRow>
+                                  </>
+                                )}
+                                <TableRow>
+                                  <TableCell>{log.action}</TableCell>
+                                  <TableCell>
+                                    {formatMySqlToBrDate(log.date)}
+                                  </TableCell>
+                                  <TableCell>
+                                    {log.state
+                                      ? stateFormat[log.state]
+                                      : "Sucesso!"}
+                                  </TableCell>
+                                  <TableCell>{log.description}</TableCell>
+                                  <TableCell>
+                                    {log.state === "failure" && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => console.log("Delete")}
+                                      >
+                                        Tentar Enviar Novamente
+                                      </Button>
+                                    )}
+                                    {log.state === "conflict" && (
+                                      <Fragment>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleHoldDocument(
+                                              +extractId(log.description)!,
+                                              log.id
+                                            )
+                                          }
+                                        >
+                                          Enviar
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="ml-2"
+                                          onClick={() =>
+                                            handleDiscartDocument(
+                                              +extractId(log.description)!,
+                                              log.id
+                                            )
+                                          }
+                                        >
+                                          Excluir
+                                        </Button>
+                                      </Fragment>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              </Fragment>
+                            );
+                          })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </main>
 
@@ -772,18 +995,18 @@ export default function AdminHomePage() {
       <Dialog open={isAddDepartmentOpen} onOpenChange={setIsAddDepartmentOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Nova Departamento</DialogTitle>
+            <DialogTitle>Adicionar Novo Departamento</DialogTitle>
             <DialogDescription>
-              Preencha os detalhes da nova empresa.
+              Preencha os detalhes do novo departamento.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddDepartment}>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="departmentName">Nome da Departamento*</Label>
+                <Label htmlFor="departmentName">Nome do Departamento*</Label>
                 <Input
                   id="departmentName"
-                  placeholder="Digite o nome da empresa"
+                  placeholder="Digite o nome do departamento"
                   required
                   value={addDepartmentForm?.name || ""}
                   onChange={(e) =>
@@ -796,11 +1019,11 @@ export default function AdminHomePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="departmentEmail">Email da Departamento*</Label>
+                <Label htmlFor="departmentEmail">Email do Departamento*</Label>
                 <Input
                   id="departmentEmail"
                   type="email"
-                  placeholder="empresa@example.com"
+                  placeholder="departamento@example.com"
                   required
                   value={addDepartmentForm?.email || ""}
                   onChange={(e) =>
@@ -812,10 +1035,9 @@ export default function AdminHomePage() {
                   }
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="departmentPhone">
-                  Telefone da Departamento
+                  Telefone do Departamento
                 </Label>
                 <Input
                   id="departmentPhone"
@@ -854,14 +1076,37 @@ export default function AdminHomePage() {
                   <option value="vendas">Vendas</option>
                 </select>
               </div>
+
+              <div className="space-y-2">
+                <Label>Pastas com Acesso</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(folderFormat).map(([key, value]) => (
+                    <div key={key} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`folder-${key}`}
+                        checked={
+                          addDepartmentForm?.foldersAccess?.some(
+                            (folder) => folder.foldername === key
+                          ) || false
+                        }
+                        onCheckedChange={(checked) =>
+                          handleFolderChange(key, checked as boolean)
+                        }
+                      />
+                      <Label htmlFor={`folder-${key}`}>{value}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="departmentPassword">
-                  Senha da Departamento*
+                  Senha do Departamento*
                 </Label>
                 <Input
                   id="departmentPassword"
                   type="password"
                   placeholder="********"
+                  required
                   value={addDepartmentForm?.password || ""}
                   onChange={(e) =>
                     setAddDepartmentForm(
@@ -874,12 +1119,13 @@ export default function AdminHomePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="departmentConfirmPassword">
-                  Confirme a Senha da Departamento*
+                  Confirme a Senha do Departamento*
                 </Label>
                 <Input
                   id="departmentConfirmPassword"
                   type="password"
                   placeholder="********"
+                  required
                   value={addDepartmentForm?.confirmPassword || ""}
                   onChange={(e) =>
                     setAddDepartmentForm(
@@ -972,11 +1218,11 @@ export default function AdminHomePage() {
                   <Label htmlFor="departmentDepartment">Departamento*</Label>
                   <select
                     id="departmentDepartment"
-                    value={addDepartmentForm?.department || ""}
+                    value={editingDepartment?.department || ""}
                     onChange={(e) =>
-                      setAddDepartmentForm(
-                        addDepartmentForm
-                          ? { ...addDepartmentForm, department: e.target.value }
+                      setEditingDepartment(
+                        editingDepartment
+                          ? { ...editingDepartment, department: e.target.value }
                           : null
                       )
                     }
@@ -990,6 +1236,30 @@ export default function AdminHomePage() {
                     <option value="esocial">E-social</option>
                     <option value="vendas">Vendas</option>
                   </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Pastas com Acesso</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(folderFormat).map(([key, value]) => (
+                      <div key={key} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`folder-${key}`}
+                          checked={
+                            editingDepartment?.foldersAccess?.some(
+                              (folder) => folder.foldername === key
+                            ) || false
+                          }
+                          onCheckedChange={(checked) => {
+                            return handleFolderChangeUpdate(
+                              key,
+                              checked as boolean
+                            );
+                          }}
+                        />
+                        <Label htmlFor={`folder-${key}`}>{value}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="editDepartmentPassword">
@@ -1073,11 +1343,11 @@ export default function AdminHomePage() {
                   type="email"
                   placeholder="cliente@example.com"
                   required
-                  value={editingClient?.email || ""}
+                  value={editingClient?.mainEmail || ""}
                   onChange={(e) =>
                     setEditingClient(
                       editingClient
-                        ? { ...editingClient, email: e.target.value }
+                        ? { ...editingClient, mainEmail: e.target.value }
                         : null
                     )
                   }
@@ -1207,11 +1477,11 @@ export default function AdminHomePage() {
                   id="editClientEmail"
                   type="email"
                   placeholder="cliente@example.com"
-                  value={editingClient?.email || ""}
+                  value={editingClient?.mainEmail || ""}
                   onChange={(e) =>
                     setEditingClient(
                       editingClient
-                        ? { ...editingClient, email: e.target.value }
+                        ? { ...editingClient, mainEmail: e.target.value }
                         : null
                     )
                   }
@@ -1359,17 +1629,19 @@ export default function AdminHomePage() {
           <ScrollArea className="max-h-[60vh] pr-4">
             <div className="grid gap-4 py-4">
               <DialogTitle>Documentos não enviados corretamente</DialogTitle>
-              {filesErrorToUpload.map((filename) => {
+              {filesErrorToUpload.map((errorUpload) => {
                 return (
                   <div
-                    key={filename}
+                    key={errorUpload.name}
                     className="grid grid-cols-4 items-center gap-4"
                   >
                     <Label htmlFor="name" className="text-left col-span-1">
-                      Nome do Arquivo
+                      {errorUpload.status === 409
+                        ? "Conflito Com Arquivo"
+                        : "Nome do Arquivo:"}
                     </Label>
                     <div id="name" className="col-span-3 text-left">
-                      {filename}
+                      {errorUpload.name}
                     </div>
                   </div>
                 );
@@ -1378,10 +1650,10 @@ export default function AdminHomePage() {
 
             <div className="grid gap-4 py-4">
               <DialogTitle>Documentos enviados com sucesso</DialogTitle>
-              {filesSuccessToUpload.map((filename) => {
+              {filesSuccessToUpload.map((successUpload) => {
                 return (
                   <div
-                    key={filename}
+                    key={successUpload.name}
                     className="grid grid-cols-4 items-center gap-4"
                   >
                     <Label
@@ -1391,7 +1663,7 @@ export default function AdminHomePage() {
                       Nome do Arquivo
                     </Label>
                     <div id="name" className="col-span-3 text-left">
-                      {filename}
+                      {successUpload.name}
                     </div>
                   </div>
                 );

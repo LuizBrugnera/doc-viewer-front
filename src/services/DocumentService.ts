@@ -19,18 +19,14 @@ export const DocumentService = {
     ).data as DocumentMetaData;
   },
 
-  async uploadFileFast(
-    token: string,
-    formData: FormData
-  ): Promise<DocumentMetaData> {
-    return (
-      await axios.post(`${API_URL}/upload/auto-assign`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      })
-    ).data as DocumentMetaData;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async uploadFileFast(token: string, formData: FormData): Promise<any> {
+    return await axios.post(`${API_URL}/upload/auto-assign`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
   },
 
   async getFilesByUser(token: string): Promise<Document[]> {
@@ -99,5 +95,33 @@ export const DocumentService = {
     });
 
     return response.data;
+  },
+
+  async discartDocument(
+    token: string,
+    documentId: number,
+    logId: number
+  ): Promise<void> {
+    await axios.delete(`${API_URL}/discart/${documentId}/${logId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  },
+
+  async holdDocument(
+    token: string,
+    documentId: number,
+    logId: number
+  ): Promise<void> {
+    await axios.post(
+      `${API_URL}/hold/${documentId}/${logId}`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
   },
 };

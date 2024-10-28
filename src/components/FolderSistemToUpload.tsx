@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -23,7 +24,7 @@ import {
   formatMySqlToBrDate,
   isUploadArea,
 } from "./utils";
-import { Category, File } from "@/types/GlobalTypes";
+import { Category, File, ResponseUpload } from "@/types/GlobalTypes";
 import LoadingModal from "./LoadingModal";
 
 interface Folder {
@@ -33,10 +34,12 @@ interface Folder {
 }
 
 interface FolderSistemToUploadProps {
-  foldersAcess?: string[];
+  foldersAcess?: { foldername: string }[];
   setIsErrorUploadOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  setFilesErrorToUpload: React.Dispatch<React.SetStateAction<string[]>>;
-  setFilesSuccessToUpload: React.Dispatch<React.SetStateAction<string[]>>;
+  setFilesErrorToUpload: React.Dispatch<React.SetStateAction<ResponseUpload[]>>;
+  setFilesSuccessToUpload: React.Dispatch<
+    React.SetStateAction<ResponseUpload[]>
+  >;
 }
 
 export default function FolderSistemToUpload({
@@ -45,7 +48,7 @@ export default function FolderSistemToUpload({
   setIsErrorUploadOpen,
   setFilesSuccessToUpload,
 }: FolderSistemToUploadProps) {
-  const { token } = useAuth();
+  const { token, updateUserInfo } = useAuth();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [activePath, setActivePath] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -68,10 +71,11 @@ export default function FolderSistemToUpload({
 
       newObject.forEach((category) => {
         foldersAcess.forEach((folder) => {
-          return folderUpFoldersFormat[folderFatherFormat[folder]] ===
-            category.name
+          return folderUpFoldersFormat[
+            folderFatherFormat[folder.foldername]
+          ] === category.name
             ? category.contents.push({
-                name: folderFormat[folder],
+                name: folderFormat[folder.foldername],
                 resource: "folder",
                 contents: [],
               })
@@ -181,8 +185,8 @@ export default function FolderSistemToUpload({
       return;
     }
 
-    const errors: string[] = [];
-    const success: string[] = [];
+    const errors: ResponseUpload[] = [];
+    const success: ResponseUpload[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
@@ -191,18 +195,28 @@ export default function FolderSistemToUpload({
       formData.append("name", files[i].name);
 
       try {
-        await DocumentService.uploadFileFast(token, formData);
+        const response = await DocumentService.uploadFileFast(token, formData);
         console.log("acerto com o nome", files[i].name);
-        success.push(files[i].name);
+        success.push({
+          name: files[i].name,
+          status: response.status,
+        });
       } catch (error) {
-        console.error("Erro ao fazer upload dos arquivos:", error);
-        console.log(" erro com o name", files[i].name);
-        errors.push(files[i].name);
+        if (error instanceof Error && (error as any).response?.status) {
+          errors.push({
+            name: files[i].name,
+            status: (error as any).response.status,
+          });
+        } else {
+          errors.push({
+            name: files[i].name,
+            status: 0,
+          });
+        }
       }
     }
-
+    updateUserInfo();
     setLoading(false);
-
     setFilesErrorToUpload(errors);
     setIsErrorUploadOpen(true);
     setFilesSuccessToUpload(success);

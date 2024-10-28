@@ -76,6 +76,12 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     localStorage.setItem("@AppName:user", JSON.stringify(userData));
   };
 
+  const updateUserInfo = () => {
+    AuthService.findUserInfo(token!).then((userInfo) => {
+      setUserInfo(userInfo);
+    });
+  };
+
   const updateDataToken = (token: string) => {
     const userData = jwtDecode<User>(token);
     setUser(userData);
@@ -115,6 +121,7 @@ const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         isLoading,
         updateDataToken,
         userInfo,
+        updateUserInfo,
       }}
     >
       {children}
