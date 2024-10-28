@@ -1,7 +1,7 @@
 import { Category, Document, DocumentMetaData } from "@/types/GlobalTypes";
 import axios, { AxiosResponse } from "axios";
 
-const API_URL = "http://localhost:3000/api/v1/documents";
+const API_URL = "http://167.88.33.108/api/v1/documents";
 
 export const DocumentService = {
   async uploadFile(

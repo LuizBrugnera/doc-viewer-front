@@ -6,8 +6,8 @@ import {
   LoginData,
   RegisterData,
 } from "../types/GlobalTypes";
-// http://167.88.33.108/api/
-const API_URL = "http://localhost:3000/api/v1/auth";
+// temp test config
+const API_URL = "http://167.88.33.108/api/v1/auth";
 
 export const AuthService = {
   login: {
