@@ -950,31 +950,33 @@ export default function AdminHomePage() {
                                     )}
                                     {log.state === "conflict" && (
                                       <Fragment>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() =>
-                                            handleHoldDocument(
-                                              +extractId(log.description)!,
-                                              log.id
-                                            )
-                                          }
-                                        >
-                                          Enviar
-                                        </Button>
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="ml-2"
-                                          onClick={() =>
-                                            handleDiscartDocument(
-                                              +extractId(log.description)!,
-                                              log.id
-                                            )
-                                          }
-                                        >
-                                          Excluir
-                                        </Button>
+                                        <div className="flex space-x-2">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                              handleHoldDocument(
+                                                +extractId(log.description)!,
+                                                log.id
+                                              )
+                                            }
+                                          >
+                                            Enviar
+                                          </Button>
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="ml-2"
+                                            onClick={() =>
+                                              handleDiscartDocument(
+                                                +extractId(log.description)!,
+                                                log.id
+                                              )
+                                            }
+                                          >
+                                            Excluir
+                                          </Button>
+                                        </div>
                                       </Fragment>
                                     )}
                                   </TableCell>
