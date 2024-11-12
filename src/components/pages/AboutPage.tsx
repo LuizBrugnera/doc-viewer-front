@@ -12,24 +12,23 @@ export default function AboutPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-extrabold text-gray-900 text-center mb-8">
-          Sobre o DocuView
+          Sobre a Betel Seg
         </h1>
 
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Nossa Missão</CardTitle>
             <CardDescription>
-              Simplificando o acesso à sua documentação
+              Facilitar o acesso aos seus documentos ocupacionais
             </CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-gray-600">
-              O DocuView é uma plataforma segura e fácil de usar, projetada para
-              fornecer acesso rápido e conveniente aos seus documentos
-              importantes, exames médicos e informações financeiras. Nossa
-              missão é simplificar a gestão de documentos pessoais, permitindo
-              que você visualize e gerencie suas informações de qualquer lugar,
-              a qualquer momento.
+              A Betel Seg é uma empresa especializada em segurança do trabalho,
+              e oferece uma plataforma segura e prática para o gerenciamento de
+              documentos essenciais, como boletos, notas fiscais, recibos,
+              laudos ocupacionais e relatórios regulatórios. Nossa missão é
+              tornar a gestão desses documentos mais simples e acessível.
             </p>
           </CardContent>
         </Card>
@@ -48,9 +47,8 @@ export default function AboutPage() {
             </CardHeader>
             <CardContent>
               <p className="text-gray-600">
-                Acesse e visualize seus documentos importantes de forma rápida e
-                segura, incluindo contratos, declarações e outros arquivos
-                pessoais.
+                Acesso rápido e seguro a boletos, notas fiscais, recibos e
+                contratos, tudo em um só lugar para sua conveniência.
               </p>
             </CardContent>
           </Card>
@@ -59,14 +57,13 @@ export default function AboutPage() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <FileCheck className="h-5 w-5 mr-2" />
-                Exames Médicos
+                Laudos Ocupacionais
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-600">
-                Mantenha seus exames médicos organizados e acessíveis. Visualize
-                resultados de exames, prescrições e histórico médico com
-                facilidade.
+                Organização e visualização de laudos essenciais, incluindo
+                PCMSO, PGR, LTCAT e outros laudos diversos.
               </p>
             </CardContent>
           </Card>
@@ -75,14 +72,13 @@ export default function AboutPage() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <CreditCard className="h-5 w-5 mr-2" />
-                Boletos e Faturas
+                Relatórios Financeiros e Regulamentares
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-600">
-                Acesse seus boletos e faturas em um só lugar. Mantenha-se
-                atualizado com suas obrigações financeiras e histórico de
-                pagamentos.
+                Disponibilização de relatórios de faturamento e relatórios de
+                eventos do eSocial (S-2240, S-2220, S-2210).
               </p>
             </CardContent>
           </Card>
@@ -97,8 +93,7 @@ export default function AboutPage() {
             <CardContent>
               <p className="text-gray-600">
                 Sua segurança é nossa prioridade. Utilizamos criptografia de
-                ponta a ponta e as mais recentes práticas de segurança para
-                proteger suas informações.
+                ponta e práticas modernas para proteger suas informações.
               </p>
             </CardContent>
           </Card>
@@ -110,16 +105,13 @@ export default function AboutPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-600">
-              Começar a usar o DocuView é fácil! Basta criar uma conta, fazer
-              login e começar a carregar seus documentos. Nossa interface
-              intuitiva torna simples navegar, visualizar e gerenciar todos os
-              seus arquivos importantes.
+              Criar uma conta é simples. Após o login, carregue seus documentos
+              e organize seus arquivos importantes com facilidade.
             </p>
             <p className="mt-4 text-gray-600">
-              Se você tiver alguma dúvida ou precisar de assistência, nossa
-              equipe de suporte está sempre pronta para ajudar. Estamos
-              comprometidos em fornecer a melhor experiência possível para
-              nossos usuários.
+              Em caso de dúvidas, nossa equipe de suporte está disponível para
+              ajudar. Nosso compromisso é proporcionar a melhor experiência
+              possível.
             </p>
           </CardContent>
         </Card>

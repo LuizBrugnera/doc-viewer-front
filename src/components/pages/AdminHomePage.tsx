@@ -1,15 +1,7 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
-import {
-  Search,
-  FileText,
-  Plus,
-  Edit,
-  Trash,
-  Eye,
-  AlertTriangle,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Search, FileText, Plus, Edit, Trash, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,13 +44,7 @@ import {
 } from "@/types/GlobalTypes";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
-import {
-  folderFormat,
-  foldersToAcess,
-  folderUpFoldersFormat,
-  formatMySqlToBrDate,
-  stateFormat,
-} from "../utils";
+import { folderFormat, foldersToAcess, folderUpFoldersFormat } from "../utils";
 import FolderSistemToUpload from "../FolderSistemToUpload";
 import { ScrollArea } from "../ui/scroll-area";
 import { UserManagement } from "../UserManagement";
@@ -66,6 +52,9 @@ import { DocumentService } from "@/services/DocumentService";
 import { DepartmentService } from "@/services/DepartmentService";
 import { Checkbox } from "../ui/checkbox";
 import { AuthService } from "@/services/AuthService";
+import DeleteConfirmationDialog from "../DeleteConfirmationDialogProps";
+import LogTable from "../LogTable";
+import HistoryTable from "../HistoryTable";
 
 type AddDepartmentForm = {
   name: string;
@@ -73,6 +62,7 @@ type AddDepartmentForm = {
   phone: string;
   password: string;
   confirmPassword: string;
+  emailTemplate: string;
   department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
   foldersAccess: { foldername: string }[];
 };
@@ -86,6 +76,7 @@ type UpdateDepartmentForm = {
   confirmPassword: string;
   department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
   foldersAccess: { foldername: string }[];
+  emailTemplate: string;
 };
 
 type UpdateUserForm = {
@@ -129,6 +120,7 @@ export default function AdminHomePage() {
       confirmPassword: "",
       department: "",
       foldersAccess: [],
+      emailTemplate: "",
     });
   const [editingClient, setEditingClient] = useState<UpdateUserForm | null>(
     null
@@ -150,6 +142,7 @@ export default function AdminHomePage() {
       password: "",
       confirmPassword: "",
       department: "financeiro",
+      emailTemplate: "",
       foldersAccess: [],
     });
 
@@ -211,10 +204,6 @@ export default function AdminHomePage() {
     fetchDocuments();
   }, [token]);
 
-  function extractId(text: string) {
-    const match = text.match(/\{(\d+)\}/);
-    return match ? parseInt(match[1], 10) : null;
-  }
   useEffect(() => {
     setEditingClient({
       id: 1,
@@ -292,6 +281,7 @@ export default function AdminHomePage() {
         password: addDepartmentForm.password,
         department: addDepartmentForm.department,
         foldersAccess: addDepartmentForm.foldersAccess,
+        emailTemplate: addDepartmentForm.emailTemplate,
       };
 
       if (!token) {
@@ -350,6 +340,7 @@ export default function AdminHomePage() {
   };
 
   const handleEditDepartment = (department: Department) => {
+    console.log(department);
     setEditingDepartment({
       id: +department.id,
       name: department.name,
@@ -359,6 +350,7 @@ export default function AdminHomePage() {
       confirmPassword: "",
       department: department.department,
       foldersAccess: department.foldersAccess,
+      emailTemplate: department.emailTemplate,
     });
     setIsEditDepartmentOpen(true);
   };
@@ -380,6 +372,7 @@ export default function AdminHomePage() {
         phone: editingDepartment.phone,
         role: "department",
         foldersAccess: editingDepartment.foldersAccess,
+        emailTemplate: editingDepartment.emailTemplate,
       };
 
       if (!token) {
@@ -772,71 +765,7 @@ export default function AdminHomePage() {
                   </select>
 
                   {selectedDepartment ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Ação</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Data e Hora</TableHead>
-                          <TableHead>Descrição</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedDepartment.logs
-                          .sort((a, b) => {
-                            const dateComparison =
-                              new Date(b.date).getTime() -
-                              new Date(a.date).getTime();
-                            if (dateComparison !== 0) return dateComparison;
-                            return a.action.localeCompare(b.action);
-                          })
-                          .map((log, index, logsArray) => {
-                            const previousLog = logsArray[index - 1];
-                            const isNewDay =
-                              !previousLog ||
-                              new Date(log.date).toDateString() !==
-                                new Date(previousLog.date).toDateString();
-
-                            return (
-                              <Fragment key={log.id}>
-                                {isNewDay && (
-                                  <>
-                                    {index !== 0 && <tr className="h-4" />}{" "}
-                                    {/* Linha em branco entre os dias */}
-                                    <TableRow>
-                                      <TableCell
-                                        colSpan={3}
-                                        className="text-left"
-                                      >
-                                        <strong>
-                                          {new Date(
-                                            log.date
-                                          ).toLocaleDateString("pt-BR", {
-                                            weekday: "long",
-                                            year: "numeric",
-                                            month: "long",
-                                            day: "numeric",
-                                          })}
-                                        </strong>
-                                      </TableCell>
-                                    </TableRow>
-                                  </>
-                                )}
-                                <TableRow>
-                                  <TableCell>{log.action}</TableCell>
-                                  <TableCell>
-                                    {log.state ? log.state : "Sucesso!"}
-                                  </TableCell>
-                                  <TableCell>
-                                    {formatMySqlToBrDate(log.date)}
-                                  </TableCell>
-                                  <TableCell>{log.description}</TableCell>
-                                </TableRow>
-                              </Fragment>
-                            );
-                          })}
-                      </TableBody>
-                    </Table>
+                    <LogTable logs={selectedDepartment?.logs || []} />
                   ) : (
                     <div className="text-center text-muted-foreground">
                       <FileText className="w-12 h-12 mx-auto mb-4" />
@@ -874,118 +803,12 @@ export default function AdminHomePage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Ação</TableHead>
-                        <TableHead>Data e Hora</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Meus Controles</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {userInfo &&
-                        userInfo.adminLogs &&
-                        userInfo!.adminLogs
-                          .sort((a, b) => {
-                            const dateComparison =
-                              new Date(b.date).getTime() -
-                              new Date(a.date).getTime();
-                            if (dateComparison !== 0) return dateComparison;
-                            return a.action.localeCompare(b.action);
-                          })
-                          .map((log, index, logsArray) => {
-                            const previousLog = logsArray[index - 1];
-                            const isNewDay =
-                              !previousLog ||
-                              new Date(log.date).toDateString() !==
-                                new Date(previousLog.date).toDateString();
-
-                            return (
-                              <Fragment key={log.id}>
-                                {isNewDay && (
-                                  <>
-                                    {index !== 0 && <tr className="h-4" />}{" "}
-                                    {/* Linha em branco entre dias */}
-                                    <TableRow>
-                                      <TableCell
-                                        colSpan={4}
-                                        className="text-left"
-                                      >
-                                        <strong>
-                                          {new Date(
-                                            log.date
-                                          ).toLocaleDateString("pt-BR", {
-                                            weekday: "long",
-                                            year: "numeric",
-                                            month: "long",
-                                            day: "numeric",
-                                          })}
-                                        </strong>
-                                      </TableCell>
-                                    </TableRow>
-                                  </>
-                                )}
-                                <TableRow>
-                                  <TableCell>{log.action}</TableCell>
-                                  <TableCell>
-                                    {formatMySqlToBrDate(log.date)}
-                                  </TableCell>
-                                  <TableCell>
-                                    {log.state
-                                      ? stateFormat[log.state]
-                                      : "Sucesso!"}
-                                  </TableCell>
-                                  <TableCell>{log.description}</TableCell>
-                                  <TableCell>
-                                    {log.state === "failure" && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => console.log("Delete")}
-                                      >
-                                        Tentar Enviar Novamente
-                                      </Button>
-                                    )}
-                                    {log.state === "conflict" && (
-                                      <Fragment>
-                                        <div className="flex space-x-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                              handleHoldDocument(
-                                                +extractId(log.description)!,
-                                                log.id
-                                              )
-                                            }
-                                          >
-                                            Enviar
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="ml-2"
-                                            onClick={() =>
-                                              handleDiscartDocument(
-                                                +extractId(log.description)!,
-                                                log.id
-                                              )
-                                            }
-                                          >
-                                            Excluir
-                                          </Button>
-                                        </div>
-                                      </Fragment>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              </Fragment>
-                            );
-                          })}
-                    </TableBody>
-                  </Table>
+                  <HistoryTable
+                    logs={userInfo?.adminLogs || []}
+                    onRetry={(logId) => console.log(`Retrying log ${logId}`)}
+                    onHold={handleHoldDocument}
+                    onDiscard={handleDiscartDocument}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -995,7 +818,7 @@ export default function AdminHomePage() {
 
       {/* Add User Dialog */}
       <Dialog open={isAddDepartmentOpen} onOpenChange={setIsAddDepartmentOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Adicionar Novo Departamento</DialogTitle>
             <DialogDescription>
@@ -1100,6 +923,32 @@ export default function AdminHomePage() {
                   ))}
                 </div>
               </div>
+              <div className="space-y-4">
+                <Label htmlFor="departmentPassword">
+                  Texto para enviar no email*
+                </Label>
+                <textarea
+                  id="departmentPassword"
+                  style={{
+                    height: "200px",
+                    width: "100%",
+                    border: "1px solid gray",
+                    borderRadius: "4px",
+                  }}
+                  placeholder="Digite o texto para enviar no email"
+                  value={addDepartmentForm?.emailTemplate || ""}
+                  onChange={(e) =>
+                    setAddDepartmentForm(
+                      addDepartmentForm
+                        ? {
+                            ...addDepartmentForm,
+                            emailTemplate: e.target.value,
+                          }
+                        : null
+                    )
+                  }
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="departmentPassword">
                   Senha do Departamento*
@@ -1154,7 +1003,7 @@ export default function AdminHomePage() {
         open={isEditDepartmentOpen}
         onOpenChange={setIsEditDepartmentOpen}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Departamento</DialogTitle>
             <DialogDescription>
@@ -1262,6 +1111,32 @@ export default function AdminHomePage() {
                       </div>
                     ))}
                   </div>
+                </div>
+                <div className="space-y-4">
+                  <Label htmlFor="departmentPassword">
+                    Texto para enviar no email*
+                  </Label>
+                  <textarea
+                    id="departmentPassword"
+                    style={{
+                      height: "200px",
+                      width: "100%",
+                      border: "1px solid gray",
+                      borderRadius: "4px",
+                    }}
+                    placeholder="Digite o texto para enviar no email"
+                    value={editingDepartment?.emailTemplate || ""}
+                    onChange={(e) =>
+                      setEditingDepartment(
+                        editingDepartment
+                          ? {
+                              ...editingDepartment,
+                              emailTemplate: e.target.value,
+                            }
+                          : null
+                      )
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="editDepartmentPassword">
@@ -1590,38 +1465,6 @@ export default function AdminHomePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete User Confirmation Dialog */}
-      <Dialog
-        open={isDeleteDepartmentOpen}
-        onOpenChange={setIsDeleteDepartmentOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Exclusão de Departamento</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir esta empresa? Esta ação não pode
-              ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-center p-4 bg-yellow-100 rounded-md">
-            <AlertTriangle className="w-6 h-6 text-yellow-600 mr-2" />
-            <p className="text-yellow-700">
-              Todos os logs e dados associados serão removidos.
-            </p>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDepartmentOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={confirmDeleteDepartment}>
-              Excluir Departamento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <Dialog open={isErrorUploadOpen} onOpenChange={setIsErrorUploadOpen}>
         <DialogContent>
           <DialogHeader>
@@ -1729,40 +1572,37 @@ export default function AdminHomePage() {
                   )}
                 </div>
               </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="phone" className="text-left col-span-1">
+                  Texto para enviar no email
+                </Label>
+                <div id="folders" className="col-span-3 text-left">
+                  {seeDataDepartment?.emailTemplate}
+                </div>
+              </div>
             </div>
           </ScrollArea>
         </DialogContent>
       </Dialog>
 
-      {/* Delete User Confirmation Dialog */}
-      <Dialog open={isDeleteClientOpen} onOpenChange={setIsDeleteClientOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirmar Exclusão de Usuário</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja excluir este cliente? Esta ação não pode
-              ser desfeita.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-center p-4 bg-yellow-100 rounded-md">
-            <AlertTriangle className="w-6 h-6 text-yellow-600 mr-2" />
-            <p className="text-yellow-700">
-              Todos os dados associados a este cliente serão removidos.
-            </p>
-          </div>
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteClientOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={confirmDeleteClient}>
-              Excluir Usuário
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmationDialog
+        isOpen={isDeleteClientOpen}
+        onClose={() => setIsDeleteClientOpen(false)}
+        onConfirm={confirmDeleteClient}
+        title="Confirmar Exclusão de Usuário"
+        description="Tem certeza que deseja excluir este cliente? Esta ação não pode
+              ser desfeita."
+        warningMessage=" Todos os dados associados a este cliente serão removidos."
+      />
+
+      <DeleteConfirmationDialog
+        isOpen={isDeleteDepartmentOpen}
+        onClose={() => setIsDeleteDepartmentOpen(false)}
+        onConfirm={confirmDeleteDepartment}
+        title="Confirmar Exclusão de Departamento"
+        description="Tem certeza que deseja excluir este departamento? Esta ação não pode ser desfeita."
+        warningMessage="Todos os logs e dados associados serão removidos."
+      />
 
       <Dialog open={isAddDocumentOpen} onOpenChange={setIsAddDocumentOpen}>
         <DialogContent>
