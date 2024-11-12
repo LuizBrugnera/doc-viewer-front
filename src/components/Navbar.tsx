@@ -21,6 +21,9 @@ const Navbar: React.FC = () => {
   if (isLoading) {
     return <LoadingSpinner />;
   }
+  if (user?.department === "exames") {
+    return <div></div>;
+  }
 
   return (
     <Fragment>

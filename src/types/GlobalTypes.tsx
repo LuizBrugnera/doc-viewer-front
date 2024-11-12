@@ -4,7 +4,7 @@ export interface User {
   mainEmail: string;
   password: string;
   department: string;
-  role: "admin" | "user" | "department" | "exames";
+  role: "admin" | "user" | "department" | "exames" | "exames-admin";
   rg?: string;
   cpf?: string;
   cnpj?: string;
@@ -50,6 +50,7 @@ export interface Department {
   phone: string;
   password: string;
   department: string;
+  emailTemplate: string;
   foldersAccess: FoldersAccess[];
   logs: Log[];
 }

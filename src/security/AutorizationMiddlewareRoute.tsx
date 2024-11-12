@@ -15,9 +15,10 @@ const AutorizationMiddlewareRoute: React.FC = () => {
     } else if (user?.role === "user") {
       return <ClientHomePage />;
     } else if (user?.role === "department") {
+      if (user?.department === "exames") {
+        return <ExamesPage />;
+      }
       return <DepartmentHomePage />;
-    } else if (user?.role === "exames") {
-      return <ExamesPage />;
     }
     return <ClientHomePage />;
   };
