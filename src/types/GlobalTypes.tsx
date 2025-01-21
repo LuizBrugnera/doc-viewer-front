@@ -78,11 +78,31 @@ export interface AuthContextData {
 
 export interface RegisterData {
   name: string;
-  email: string;
+  email?: string;
+  emails?: any[];
   password: string;
   confirmPassword: string;
   cpf?: string;
   birthdate?: string;
+}
+
+export interface ServiceOrder {
+  id: number;
+  cod: string;
+  status: string;
+  clientName: string;
+  clientId: string;
+  sellerId: string;
+  sellerName: string;
+  technicalId: string;
+  technicalName: string;
+  entryDate: string;
+  exitDate: string;
+  situationName: string;
+  totalValue: string;
+  storeName: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface EmailLogin {

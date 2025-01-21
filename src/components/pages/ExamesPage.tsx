@@ -1,9 +1,11 @@
-import { Clipboard, List, Unlock } from "lucide-react";
+import { Clipboard, List, Plus, Unlock } from "lucide-react";
 import { useState } from "react";
 import ExamList from "../ExamesList";
 import ExamesToPerform from "../ExamesToPerform";
 import ExamesToRelease from "../ExamesToRelease";
 import { Avatar } from "@radix-ui/react-avatar";
+import EmployeeRegistration from "../EmployeeRegistration";
+import EmployeeExamStatus from "../EmployeeStatusList";
 
 export const ExamesPage = () => {
   const [activeTab, setActiveTab] = useState("to-perform");
@@ -32,11 +34,26 @@ export const ExamesPage = () => {
               Exames a liberar
             </div>
             <div
+              onClick={() => setActiveTab("add-employee")}
+              className="flex items-center text-purple-700 hover:text-purple-900 cursor-pointer"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Adicionar Empregado
+            </div>
+            <div
               onClick={() => setActiveTab("listagem")}
               className="flex items-center text-purple-700 hover:text-purple-900 cursor-pointer"
             >
               <List className="w-5 h-5 mr-2" />
               Listagem de exames
+            </div>
+            
+            <div
+              onClick={() => setActiveTab("employee-status")}
+              className="flex items-center text-purple-700 hover:text-purple-900 cursor-pointer"
+            >
+              <List className="w-5 h-5 mr-2" />
+              Listar Status dos Empregados
             </div>
           </div>
           <div className="flex items-center space-x-4 cursor-pointer">
@@ -47,6 +64,8 @@ export const ExamesPage = () => {
       {activeTab === "to-perform" && <ExamesToPerform />}
       {activeTab === "to-release" && <ExamesToRelease />}
       {activeTab === "listagem" && <ExamList />}
+      {activeTab === "add-employee" && <EmployeeRegistration/>}
+      {activeTab === "employee-status" && <EmployeeExamStatus/>}
     </div>
   );
 };

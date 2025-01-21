@@ -21,7 +21,7 @@ const Navbar: React.FC = () => {
   if (isLoading) {
     return <LoadingSpinner />;
   }
-  if (user?.department === "exames") {
+  if (user?.department === "exames" || user?.department === "os") {
     return <div></div>;
   }
 

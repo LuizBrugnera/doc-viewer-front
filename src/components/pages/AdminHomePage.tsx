@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Department,
   Document,
+  FoldersAccess,
   ResponseUpload,
   User,
 } from "@/types/GlobalTypes";
@@ -50,48 +51,75 @@ import { ScrollArea } from "../ui/scroll-area";
 import { UserManagement } from "../UserManagement";
 import { DocumentService } from "@/services/DocumentService";
 import { DepartmentService } from "@/services/DepartmentService";
-import { Checkbox } from "../ui/checkbox";
 import { AuthService } from "@/services/AuthService";
 import DeleteConfirmationDialog from "../DeleteConfirmationDialogProps";
 import LogTable from "../LogTable";
 import HistoryTable from "../HistoryTable";
-
-type AddDepartmentForm = {
-  name: string;
-  email: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-  emailTemplate: string;
-  department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
-  foldersAccess: { foldername: string }[];
-};
-
-type UpdateDepartmentForm = {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-  department: string; //"financeiro" | "documentosTecnicos" | "faturamento" | "esocial";
-  foldersAccess: { foldername: string }[];
-  emailTemplate: string;
-};
-
-type UpdateUserForm = {
-  id: number;
-  name: string;
-  mainEmail: string;
-  cod: string;
-  phone: string;
-  password: string;
-  confirmPassword: string;
-  cnpj: string;
-  rg: string;
-};
+import DepartmentDialog from "../DepartmentDialog";
+import ClientDialog from "../ClientDialog";
 
 export default function AdminHomePage() {
+  interface DepartmentForm {
+    id?: string | number;
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    confirmPassword: string;
+    department: string;
+    foldersAccess: FoldersAccess[];
+    emailTemplate: string;
+  }
+
+  const initialDepartmentForm: DepartmentForm = {
+    id: "",
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+    department: "financeiro",
+    foldersAccess: [],
+    emailTemplate: "",
+  };
+
+  interface ClientForm {
+    id?: string | number;
+    name: string;
+    mainEmail: string;
+    phone: string;
+    rg: string;
+    cnpj: string;
+    cod: string;
+    password: string;
+    confirmPassword: string;
+  }
+
+  const initialClientForm: ClientForm = {
+    id: "",
+    name: "",
+    mainEmail: "",
+    phone: "",
+    rg: "",
+    cnpj: "",
+    cod: "",
+    password: "",
+    confirmPassword: "",
+  };
+
+  const [addClientForm, setAddClientForm] = useState(initialClientForm);
+  const [editingClient, setEditingClient] = useState(initialClientForm);
+
+  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
+  const [isEditClientOpen, setIsEditClientOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  const [addDepartmentForm, setAddDepartmentForm] = useState(
+    initialDepartmentForm
+  );
+  const [editingDepartment, setEditingDepartment] = useState(
+    initialDepartmentForm
+  );
   const { token, userInfo, updateUserInfo } = useAuth();
   const [selectedDepartment, setSelectedDepartment] =
     useState<Department | null>(null);
@@ -108,23 +136,7 @@ export default function AdminHomePage() {
   const [seeDataDepartment, setSeeDataDepartment] = useState<Department | null>(
     null
   );
-  const [isAddClientOpen, setIsAddClientOpen] = useState(false);
-  const [isEditClientOpen, setIsEditClientOpen] = useState(false);
-  const [editingDepartment, setEditingDepartment] =
-    useState<UpdateDepartmentForm | null>({
-      id: 0,
-      name: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      department: "",
-      foldersAccess: [],
-      emailTemplate: "",
-    });
-  const [editingClient, setEditingClient] = useState<UpdateUserForm | null>(
-    null
-  );
+
   const [isDeleteDepartmentOpen, setIsDeleteDepartmentOpen] = useState(false);
   const [isDeleteClientOpen, setIsDeleteClientOpen] = useState(false);
   const [deletingDepartment, setDeletingDepartment] =
@@ -134,17 +146,6 @@ export default function AdminHomePage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [clients, setClients] = useState<User[]>([]);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
-  const [addDepartmentForm, setAddDepartmentForm] =
-    useState<AddDepartmentForm | null>({
-      name: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      department: "financeiro",
-      emailTemplate: "",
-      foldersAccess: [],
-    });
 
   const [usersDisplayed, setUsersDisplayed] = useState(50);
   const [newDocumentName, setNewDocumentName] = useState("");
@@ -265,9 +266,7 @@ export default function AdminHomePage() {
     setIsDataDepartmentOpen(true);
   };
 
-  const handleAddDepartment = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleAddDepartment = async () => {
     if (addDepartmentForm) {
       if (addDepartmentForm.password !== addDepartmentForm.confirmPassword) {
         alert("As senhas não coincidem.");
@@ -275,13 +274,13 @@ export default function AdminHomePage() {
       }
 
       const data = {
-        name: addDepartmentForm.name,
-        email: addDepartmentForm.email,
-        phone: addDepartmentForm.phone,
-        password: addDepartmentForm.password,
+        name: addDepartmentForm.name.trim(),
+        email: addDepartmentForm.email.trim(),
+        phone: addDepartmentForm.phone.trim(),
+        password: addDepartmentForm.password.trim(),
         department: addDepartmentForm.department,
         foldersAccess: addDepartmentForm.foldersAccess,
-        emailTemplate: addDepartmentForm.emailTemplate,
+        emailTemplate: addDepartmentForm.emailTemplate.trim(),
       };
 
       if (!token) {
@@ -291,58 +290,15 @@ export default function AdminHomePage() {
       await AuthService.register.department(data, token);
       await fetchDepartments();
 
-      setAddDepartmentForm(null);
+      setAddDepartmentForm(initialDepartmentForm);
       setIsAddDepartmentOpen(false);
     }
     setIsAddDepartmentOpen(false);
   };
 
-  useEffect(() => {
-    if (addDepartmentForm?.department) {
-      const defaultFolders = foldersToAcess[addDepartmentForm.department] || [];
-      setAddDepartmentForm((prev) =>
-        prev
-          ? {
-              ...prev,
-              foldersAccess: defaultFolders.map((folder) => ({
-                foldername: folder,
-              })),
-            }
-          : null
-      );
-    }
-  }, [addDepartmentForm?.department]);
-
-  const handleFolderChange = (folder: string, checked: boolean) => {
-    setAddDepartmentForm((prev) =>
-      prev
-        ? {
-            ...prev,
-            foldersAccess: checked
-              ? [...prev.foldersAccess, { foldername: folder }]
-              : prev.foldersAccess.filter((f) => f.foldername !== folder),
-          }
-        : null
-    );
-  };
-
-  const handleFolderChangeUpdate = (folder: string, checked: boolean) => {
-    setEditingDepartment((prev) =>
-      prev
-        ? {
-            ...prev,
-            foldersAccess: checked
-              ? [...prev.foldersAccess, { foldername: folder }]
-              : prev.foldersAccess.filter((f) => f.foldername !== folder),
-          }
-        : null
-    );
-  };
-
   const handleEditDepartment = (department: Department) => {
-    console.log(department);
     setEditingDepartment({
-      id: +department.id,
+      id: department.id,
       name: department.name,
       email: department.email,
       phone: department.phone || "",
@@ -355,8 +311,8 @@ export default function AdminHomePage() {
     setIsEditDepartmentOpen(true);
   };
 
-  const handleUpdateDepartment = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateDepartment = async () => {
+
     if (editingDepartment) {
       if (editingDepartment.password !== editingDepartment.confirmPassword) {
         alert("As senhas não coincidem.");
@@ -364,15 +320,15 @@ export default function AdminHomePage() {
       }
 
       const data = {
-        id: editingDepartment.id,
-        name: editingDepartment.name,
-        email: editingDepartment.email,
-        password: editingDepartment.password,
+        id: +editingDepartment.id!,
+        name: editingDepartment.name.trim(),
+        email: editingDepartment.email.trim(),
+        password: editingDepartment.password.trim(),
         department: editingDepartment.department,
-        phone: editingDepartment.phone,
+        phone: editingDepartment.phone.trim(),
         role: "department",
         foldersAccess: editingDepartment.foldersAccess,
-        emailTemplate: editingDepartment.emailTemplate,
+        emailTemplate: editingDepartment.emailTemplate.trim(),
       };
 
       if (!token) {
@@ -383,7 +339,7 @@ export default function AdminHomePage() {
 
       await fetchDepartments();
 
-      setEditingDepartment(null);
+      setEditingDepartment(initialDepartmentForm);
       setIsEditDepartmentOpen(false);
     }
     setIsEditDepartmentOpen(false);
@@ -454,33 +410,6 @@ export default function AdminHomePage() {
     setIsAddClientOpen(false);
   };
 
-  const handleHoldDocument = async (docId: number, logId: number) => {
-    DocumentService.holdDocument(token!, docId, logId).then(() => {
-      updateUserInfo();
-    });
-  };
-
-  const handleDiscartDocument = async (docId: number, logId: number) => {
-    DocumentService.discartDocument(token!, docId, logId).then(() => {
-      updateUserInfo();
-    });
-  };
-
-  const handleEditClient = (client: User) => {
-    setEditingClient({
-      id: +client.id,
-      name: client.name,
-      mainEmail: client.mainEmail,
-      cod: client.cod || "",
-      phone: client.phone || "",
-      rg: client.rg || "",
-      cnpj: client.cnpj || "",
-      password: client.password || "",
-      confirmPassword: "",
-    });
-    setIsEditClientOpen(true);
-  };
-
   const handleUpdateClient = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -495,7 +424,7 @@ export default function AdminHomePage() {
     }
 
     const data = {
-      id: editingClient.id,
+      id: +editingClient.id!,
       name: editingClient.name,
       mainEmail: editingClient.mainEmail,
       password: editingClient.password,
@@ -514,6 +443,21 @@ export default function AdminHomePage() {
     await fetchClients();
 
     setIsEditClientOpen(false);
+  };
+
+  const handleEditClient = (client: User) => {
+    setEditingClient({
+      id: +client.id,
+      name: client.name,
+      mainEmail: client.mainEmail,
+      cod: client.cod || "",
+      phone: client.phone || "",
+      rg: client.rg || "",
+      cnpj: client.cnpj || "",
+      password: client.password || "",
+      confirmPassword: "",
+    });
+    setIsEditClientOpen(true);
   };
 
   const handleDeleteClient = (client: User) => {
@@ -536,6 +480,18 @@ export default function AdminHomePage() {
       setIsDeleteClientOpen(false);
       setDeletingClient(null);
     }
+  };
+
+  const handleHoldDocument = async (docId: number, logId: number) => {
+    DocumentService.holdDocument(token!, docId, logId).then(() => {
+      updateUserInfo();
+    });
+  };
+
+  const handleDiscartDocument = async (docId: number, logId: number) => {
+    DocumentService.discartDocument(token!, docId, logId).then(() => {
+      updateUserInfo();
+    });
   };
 
   return (
@@ -816,654 +772,63 @@ export default function AdminHomePage() {
         </Tabs>
       </main>
 
-      {/* Add User Dialog */}
-      <Dialog open={isAddDepartmentOpen} onOpenChange={setIsAddDepartmentOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Adicionar Novo Departamento</DialogTitle>
-            <DialogDescription>
-              Preencha os detalhes do novo departamento.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleAddDepartment}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="departmentName">Nome do Departamento*</Label>
-                <Input
-                  id="departmentName"
-                  placeholder="Digite o nome do departamento"
-                  required
-                  value={addDepartmentForm?.name || ""}
-                  onChange={(e) =>
-                    setAddDepartmentForm(
-                      addDepartmentForm
-                        ? { ...addDepartmentForm, name: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="departmentEmail">Email do Departamento*</Label>
-                <Input
-                  id="departmentEmail"
-                  type="email"
-                  placeholder="departamento@example.com"
-                  required
-                  value={addDepartmentForm?.email || ""}
-                  onChange={(e) =>
-                    setAddDepartmentForm(
-                      addDepartmentForm
-                        ? { ...addDepartmentForm, email: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="departmentPhone">
-                  Telefone do Departamento
-                </Label>
-                <Input
-                  id="departmentPhone"
-                  type="text"
-                  placeholder="(99) 999999999 OPCIONAL"
-                  value={addDepartmentForm?.phone || ""}
-                  onChange={(e) =>
-                    setAddDepartmentForm(
-                      addDepartmentForm
-                        ? { ...addDepartmentForm, phone: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="departmentDepartment">Departamento*</Label>
-                <select
-                  id="departmentDepartment"
-                  value={addDepartmentForm?.department || ""}
-                  onChange={(e) =>
-                    setAddDepartmentForm(
-                      addDepartmentForm
-                        ? { ...addDepartmentForm, department: e.target.value }
-                        : null
-                    )
-                  }
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                >
-                  <option value="financeiro">Financeiro</option>
-                  <option value="documentosTecnicos">
-                    Documentos Técnicos
-                  </option>
-                  <option value="faturamento">Faturamento</option>
-                  <option value="esocial">E-social</option>
-                  <option value="vendas">Vendas</option>
-                </select>
-              </div>
+      <DepartmentDialog
+        isOpen={isAddDepartmentOpen || isEditDepartmentOpen}
+        onClose={() => {
+          setIsAddDepartmentOpen(false);
+          setIsEditDepartmentOpen(false);
+        }}
+        onSave={(data) => {
+          if (isAddDepartmentOpen) {
+            handleAddDepartment();
+          } else {
+            handleUpdateDepartment();
+          }
+        }}
+        formData={isAddDepartmentOpen ? addDepartmentForm : editingDepartment}
+        onChange={(field, value, field2?, value2?) => {
+          if (isAddDepartmentOpen) {
+            setAddDepartmentForm({
+              ...addDepartmentForm,
+              [field]: value,
+              ...(field2 && value2 ? { [field2]: value2 } : {}),
+            });
+          } else {
+            setEditingDepartment({
+              ...editingDepartment,
+              [field]: value,
+              ...(field2 && value2 ? { [field2]: value2 } : {}),
+            });
+          }
+        }}
+        availableFolders={folderFormat}
+        isEditMode={!isAddDepartmentOpen}
+      />
 
-              <div className="space-y-2">
-                <Label>Pastas com Acesso</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(folderFormat).map(([key, value]) => (
-                    <div key={key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`folder-${key}`}
-                        checked={
-                          addDepartmentForm?.foldersAccess?.some(
-                            (folder) => folder.foldername === key
-                          ) || false
-                        }
-                        onCheckedChange={(checked) =>
-                          handleFolderChange(key, checked as boolean)
-                        }
-                      />
-                      <Label htmlFor={`folder-${key}`}>{value}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-4">
-                <Label htmlFor="departmentPassword">
-                  Texto para enviar no email*
-                </Label>
-                <textarea
-                  id="departmentPassword"
-                  style={{
-                    height: "200px",
-                    width: "100%",
-                    border: "1px solid gray",
-                    borderRadius: "4px",
-                  }}
-                  placeholder="Digite o texto para enviar no email"
-                  value={addDepartmentForm?.emailTemplate || ""}
-                  onChange={(e) =>
-                    setAddDepartmentForm(
-                      addDepartmentForm
-                        ? {
-                            ...addDepartmentForm,
-                            emailTemplate: e.target.value,
-                          }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="departmentPassword">
-                  Senha do Departamento*
-                </Label>
-                <Input
-                  id="departmentPassword"
-                  type="password"
-                  placeholder="********"
-                  required
-                  value={addDepartmentForm?.password || ""}
-                  onChange={(e) =>
-                    setAddDepartmentForm(
-                      addDepartmentForm
-                        ? { ...addDepartmentForm, password: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="departmentConfirmPassword">
-                  Confirme a Senha do Departamento*
-                </Label>
-                <Input
-                  id="departmentConfirmPassword"
-                  type="password"
-                  placeholder="********"
-                  required
-                  value={addDepartmentForm?.confirmPassword || ""}
-                  onChange={(e) =>
-                    setAddDepartmentForm(
-                      addDepartmentForm
-                        ? {
-                            ...addDepartmentForm,
-                            confirmPassword: e.target.value,
-                          }
-                        : null
-                    )
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter className="mt-4">
-              <Button type="submit">Adicionar Departamento</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit User Dialog */}
-      <Dialog
-        open={isEditDepartmentOpen}
-        onOpenChange={setIsEditDepartmentOpen}
-      >
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar Departamento</DialogTitle>
-            <DialogDescription>
-              Atualize as informações da empresa.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleUpdateDepartment}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="editDepartmentName">Nome da Departamento</Label>
-                <Input
-                  id="editDepartmentName"
-                  placeholder="Digite o nome da empresa"
-                  value={editingDepartment?.name || ""}
-                  onChange={(e) =>
-                    setEditingDepartment(
-                      editingDepartment
-                        ? { ...editingDepartment, name: e.target.value }
-                        : null
-                    )
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editDepartmentEmail">
-                  Email da Departamento
-                </Label>
-                <Input
-                  id="editDepartmentEmail"
-                  type="email"
-                  placeholder="empresa@example.com"
-                  value={editingDepartment?.email || ""}
-                  onChange={(e) =>
-                    setEditingDepartment(
-                      editingDepartment
-                        ? { ...editingDepartment, email: e.target.value }
-                        : null
-                    )
-                  }
-                  required
-                />
-
-                <div className="space-y-2">
-                  <Label htmlFor="editDepartmentPhone">
-                    Telefone da Departamento
-                  </Label>
-                  <Input
-                    id="editDepartmentPhone"
-                    type="text"
-                    placeholder="(99) 999999999 OPCIONAL"
-                    value={editingDepartment?.phone || ""}
-                    onChange={(e) =>
-                      setEditingDepartment(
-                        editingDepartment
-                          ? { ...editingDepartment, phone: e.target.value }
-                          : null
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="departmentDepartment">Departamento*</Label>
-                  <select
-                    id="departmentDepartment"
-                    value={editingDepartment?.department || ""}
-                    onChange={(e) =>
-                      setEditingDepartment(
-                        editingDepartment
-                          ? { ...editingDepartment, department: e.target.value }
-                          : null
-                      )
-                    }
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                  >
-                    <option value="financeiro">Financeiro</option>
-                    <option value="documentosTecnicos">
-                      Documentos Técnicos
-                    </option>
-                    <option value="faturamento">Faturamento</option>
-                    <option value="esocial">E-social</option>
-                    <option value="vendas">Vendas</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Pastas com Acesso</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(folderFormat).map(([key, value]) => (
-                      <div key={key} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`folder-${key}`}
-                          checked={
-                            editingDepartment?.foldersAccess?.some(
-                              (folder) => folder.foldername === key
-                            ) || false
-                          }
-                          onCheckedChange={(checked) => {
-                            return handleFolderChangeUpdate(
-                              key,
-                              checked as boolean
-                            );
-                          }}
-                        />
-                        <Label htmlFor={`folder-${key}`}>{value}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <Label htmlFor="departmentPassword">
-                    Texto para enviar no email*
-                  </Label>
-                  <textarea
-                    id="departmentPassword"
-                    style={{
-                      height: "200px",
-                      width: "100%",
-                      border: "1px solid gray",
-                      borderRadius: "4px",
-                    }}
-                    placeholder="Digite o texto para enviar no email"
-                    value={editingDepartment?.emailTemplate || ""}
-                    onChange={(e) =>
-                      setEditingDepartment(
-                        editingDepartment
-                          ? {
-                              ...editingDepartment,
-                              emailTemplate: e.target.value,
-                            }
-                          : null
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editDepartmentPassword">
-                    Senha da Departamento*
-                  </Label>
-                  <Input
-                    id="editDepartmentPassword"
-                    type="password"
-                    placeholder="********"
-                    value={editingDepartment?.password || ""}
-                    onChange={(e) =>
-                      setEditingDepartment(
-                        editingDepartment
-                          ? { ...editingDepartment, password: e.target.value }
-                          : null
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editDepartmentConfirmPassword">
-                    Confirme a Senha da Departamento*
-                  </Label>
-                  <Input
-                    id="editDepartmentConfirmPassword"
-                    type="password"
-                    placeholder="********"
-                    value={editingDepartment?.confirmPassword || ""}
-                    onChange={(e) =>
-                      setEditingDepartment(
-                        editingDepartment
-                          ? {
-                              ...editingDepartment,
-                              confirmPassword: e.target.value,
-                            }
-                          : null
-                      )
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter className="mt-4">
-              <Button type="submit">Atualizar Departamento</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add User Dialog */}
-      <Dialog open={isAddClientOpen} onOpenChange={setIsAddClientOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Adicionar Novo Usuário</DialogTitle>
-            <DialogDescription>
-              Preencha os detalhes do novo cliente.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleAddClient}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="clientName">Nome do Usuário</Label>
-                <Input
-                  id="clientName"
-                  placeholder="Digite o nome do cliente"
-                  required
-                  value={editingClient?.name || ""}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, name: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="clientEmail">Email do Usuário</Label>
-                <Input
-                  id="clientEmail"
-                  type="email"
-                  placeholder="cliente@example.com"
-                  required
-                  value={editingClient?.mainEmail || ""}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, mainEmail: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2 mt-2">
-              <Label htmlFor="editClientPhone">Telefone do Usuário</Label>
-              <Input
-                id="editClientPhone"
-                type="text"
-                placeholder="(99) 999999999 OPCIONAL"
-                value={editingClient?.phone || ""}
-                onChange={(e) =>
-                  setEditingClient(
-                    editingClient
-                      ? { ...editingClient, phone: e.target.value }
-                      : null
-                  )
-                }
-              />
-            </div>
-
-            <div className="space-y-2 mt-2">
-              <Label htmlFor="editClientRg">RG</Label>
-              <Input
-                id="editClientRg"
-                placeholder="Digite o rg"
-                value={editingClient?.rg || ""}
-                onChange={(e) =>
-                  setEditingClient(
-                    editingClient
-                      ? { ...editingClient, rg: e.target.value }
-                      : null
-                  )
-                }
-              />
-            </div>
-            <div className="space-y-2 mt-2">
-              <Label htmlFor="editClientCnpj">CNPJ</Label>
-              <Input
-                id="editClientCnpj"
-                placeholder="Digite o cnpj"
-                value={editingClient?.cnpj || ""}
-                onChange={(e) =>
-                  setEditingClient(
-                    editingClient
-                      ? { ...editingClient, cnpj: e.target.value }
-                      : null
-                  )
-                }
-              />
-            </div>
-            <div className="space-y-2 mt-2">
-              <Label htmlFor="editClientPassword">Senha</Label>
-              <Input
-                type="password"
-                id="editClientPassword"
-                placeholder="Digite a senha"
-                value={editingClient?.password}
-                onChange={(e) =>
-                  setEditingClient(
-                    editingClient
-                      ? { ...editingClient, password: e.target.value }
-                      : null
-                  )
-                }
-              />
-            </div>
-            <div className="space-y-2 mt-2">
-              <Label htmlFor="editClientConfirmPassword">
-                Confirme a senha
-              </Label>
-              <Input
-                type="password"
-                id="editClientConfirmPassword"
-                placeholder="Confirme a senha"
-                value={editingClient?.confirmPassword}
-                onChange={(e) =>
-                  setEditingClient(
-                    editingClient
-                      ? { ...editingClient, confirmPassword: e.target.value }
-                      : null
-                  )
-                }
-              />
-            </div>
-
-            <DialogFooter className="mt-4">
-              <Button type="submit">Adicionar Usuário</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit User Dialog */}
-      <Dialog open={isEditClientOpen} onOpenChange={setIsEditClientOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
-            <DialogDescription>
-              Atualize as informações do cliente.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleUpdateClient}>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="editClientName">Nome do Usuário</Label>
-                <Input
-                  id="editClientName"
-                  placeholder="Digite o nome do cliente"
-                  value={editingClient?.name || ""}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, name: e.target.value }
-                        : null
-                    )
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editClientEmail">Email do Usuário</Label>
-                <Input
-                  id="editClientEmail"
-                  type="email"
-                  placeholder="cliente@example.com"
-                  value={editingClient?.mainEmail || ""}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, mainEmail: e.target.value }
-                        : null
-                    )
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editClientCnpj">CNPJ</Label>
-                <Input
-                  id="editClientCnpj"
-                  placeholder="Digite o cnpj"
-                  value={editingClient?.cnpj || ""}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, cnpj: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editClientRg">RG</Label>
-                <Input
-                  id="editClientRg"
-                  placeholder="Digite o rg"
-                  value={editingClient?.rg || ""}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, rg: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editClientPhone">Telefone</Label>
-                <Input
-                  id="editClientPhone"
-                  placeholder="Digite o telefone"
-                  value={editingClient?.phone || ""}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, phone: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editClientCod">COD</Label>
-                <Input
-                  id="editClientCod"
-                  placeholder="Digite o cod"
-                  value={editingClient?.cod || ""}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, cod: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="editClientPassword">Nova Senha</Label>
-                <Input
-                  type="password"
-                  id="editClientPassword"
-                  placeholder="Digite a nova senha"
-                  value={editingClient?.password}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, password: e.target.value }
-                        : null
-                    )
-                  }
-                />
-                <Label htmlFor="editClientConfirmPassword">
-                  Confirme a nova senha
-                </Label>
-                <Input
-                  type="password"
-                  id="editClientConfirmPassword"
-                  placeholder="Confirme a nova senha"
-                  value={editingClient?.confirmPassword}
-                  onChange={(e) =>
-                    setEditingClient(
-                      editingClient
-                        ? { ...editingClient, confirmPassword: e.target.value }
-                        : null
-                    )
-                  }
-                />
-              </div>
-            </div>
-            <DialogFooter className="mt-4">
-              <Button type="submit">Atualizar Usuário</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <ClientDialog
+        isOpen={isAddClientOpen || isEditClientOpen}
+        onClose={() => {
+          setIsAddClientOpen(false);
+          setIsEditClientOpen(false);
+        }}
+        onSave={(data) => {
+          if (isAddClientOpen) {
+            handleAddClient(data);
+            setAddClientForm(initialClientForm);
+          } else {
+            handleUpdateClient(data);
+          }
+        }}
+        formData={isAddClientOpen ? addClientForm : editingClient}
+        onChange={(field, value) => {
+          if (isAddClientOpen) {
+            setAddClientForm({ ...addClientForm, [field]: value });
+          } else {
+            setEditingClient({ ...editingClient, [field]: value });
+          }
+        }}
+        isEditMode={!isAddClientOpen}
+      />
 
       <Dialog open={isErrorUploadOpen} onOpenChange={setIsErrorUploadOpen}>
         <DialogContent>

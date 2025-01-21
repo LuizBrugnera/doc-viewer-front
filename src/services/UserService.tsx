@@ -1,7 +1,7 @@
 import { User, UserInfo } from "@/types/GlobalTypes";
 import axios from "axios";
 
-const API_URL = "http://167.88.33.108/api/v1/users";
+const API_URL = "http://localhost:3000/api/v1/users";
 
 export const UserService = {
   async createUser(token: string, userData: UserInfo): Promise<void> {

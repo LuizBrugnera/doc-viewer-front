@@ -21,6 +21,7 @@ export const foldersToAcess = {
     "relatorioEventoS2210",
   ],
   vendas: ["contratos", "ordensServico"],
+  exames: [""],
   all: [
     "boletos",
     "notasFiscais",
@@ -60,6 +61,7 @@ export const folderUpFoldersFormat = {
   faturamento: "Faturamento",
   esocial: "E-social",
   vendas: "Vendas",
+  exames: "Exames"
 } as { [key: string]: string };
 
 export const stateFormat = {

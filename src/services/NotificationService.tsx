@@ -1,7 +1,7 @@
 import { Notification } from "@/types/GlobalTypes";
 import axios from "axios";
 
-const API_URL = "http://167.88.33.108/api/v1/notifications";
+const API_URL = "http://localhost:3000/api/v1/notifications";
 
 export const NotificationService = {
   async updateViewed(token: string, notficationId: number): Promise<void> {

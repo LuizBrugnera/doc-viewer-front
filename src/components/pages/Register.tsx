@@ -103,7 +103,9 @@ export default function RegisterPage() {
     try {
       await AuthService.register.user({
         name: formData.fullName,
-        email: formData.email,
+        emails: [{email: formData.email, 
+          department : "all"
+        }],
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         cpf: formData.cpf,

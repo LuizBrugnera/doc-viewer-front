@@ -1,7 +1,7 @@
 import { Log } from "@/types/GlobalTypes";
 import axios from "axios";
 
-const API_URL = "http://167.88.33.108/api/v1/logs";
+const API_URL = "http://localhost:3000/api/v1/logs";
 
 export const LogService = {
   async createLog(

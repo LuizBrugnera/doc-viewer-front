@@ -6,6 +6,7 @@ import ClientHomePage from "@/components/pages/ClientHomePage";
 import DepartmentHomePage from "@/components/pages/DepartmentHomePage";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { ExamesPage } from "@/components/pages/ExamesPage";
+import OsControllPage from "@/components/pages/OsControllPage";
 
 const AutorizationMiddlewareRoute: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -17,6 +18,9 @@ const AutorizationMiddlewareRoute: React.FC = () => {
     } else if (user?.role === "department") {
       if (user?.department === "exames") {
         return <ExamesPage />;
+      }
+      if (user?.department === "os") {
+        return <OsControllPage />;
       }
       return <DepartmentHomePage />;
     }
