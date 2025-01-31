@@ -61,7 +61,8 @@ export const folderUpFoldersFormat = {
   faturamento: "Faturamento",
   esocial: "E-social",
   vendas: "Vendas",
-  exames: "Exames"
+  exames: "Exames",
+  os: "Ordem de Serviço",
 } as { [key: string]: string };
 
 export const stateFormat = {

@@ -43,9 +43,19 @@ interface ServiceOrder {
   updated_at: string;
 }
 
+interface ServiceDataService {
+  id: number;
+  cod: string;
+  name: string;
+  sellValue: string;
+  description: string;
+  duration: string | null;
+}
+
 interface DashboardProps {
   onSelectStatus: (type: string, status: string) => void;
   ordersProp: ServiceOrder[];
+  servicesProp: ServiceDataService[];
 }
 
 // Vamos usar os mesmos statuses em todas as seções
@@ -64,17 +74,8 @@ const allStatuses = [
 export default function Dashboard({
   onSelectStatus,
   ordersProp,
+  servicesProp,
 }: DashboardProps) {
-  // Filtros locais
-  const [filters, setFilters] = useState<Filters>({
-    type: "",
-    status: "",
-    startDate: "",
-    endDate: "",
-    client: "",
-    orderNumber: "",
-  });
-
   // Contadores:
   // 1) "OS" → soma de (type="page" + type="training")
   const [countsOs, setCountsOs] = useState<Record<string, number>>({});
@@ -91,6 +92,22 @@ export default function Dashboard({
   }, [ordersProp]);
 
   // Função que calcula os contadores
+
+  function osAtrasados(data: ServiceOrder[]): number {
+    return data.filter((o) => {
+      const entryTime = new Date(o.entryDate).getTime();
+      const now = Date.now();
+
+      return servicesProp.some((service) => {
+        if (o.services[0].name !== service.name || !service.duration)
+          return false;
+
+        const prazo = entryTime + Number(service.duration) * 86400000;
+        return now > prazo && o.status !== "scheduled";
+      });
+    }).length;
+  }
+
   function recalcAll(data: ServiceOrder[]) {
     // "OS" => soma (page + training)
     const newOsCounts: Record<string, number> = {};
@@ -120,43 +137,6 @@ export default function Dashboard({
     setCountsLaudos(newLaudosCounts);
     setCountsTraining(newTrainingCounts);
   }
-
-  // Filtro local por datas, cliente etc. (opcional)
-  const handleFilterChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
-  };
-
-  const handleSearch = (e: FormEvent) => {
-    e.preventDefault();
-    let filtered = [...ordersProp];
-
-    if (filters.startDate) {
-      const start = new Date(filters.startDate).getTime();
-      filtered = filtered.filter(
-        (o) => new Date(o.entryDate).getTime() >= start
-      );
-    }
-    if (filters.endDate) {
-      const end = new Date(filters.endDate).getTime();
-      filtered = filtered.filter((o) => new Date(o.entryDate).getTime() <= end);
-    }
-    if (filters.client) {
-      filtered = filtered.filter(
-        (o) =>
-          o.clientName.toLowerCase().includes(filters.client.toLowerCase()) ||
-          o.clientId.toLowerCase().includes(filters.client.toLowerCase())
-      );
-    }
-    if (filters.orderNumber) {
-      filtered = filtered.filter((o) => o.cod.includes(filters.orderNumber));
-    }
-
-    // Recalcula contagens nesse subset
-    recalcAll(filtered);
-  };
-
   // Totais
   // 1) total "OS" (tudo que for page ou training)
   const totalOs = ordersProp.filter(
@@ -166,109 +146,6 @@ export default function Dashboard({
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Filter Sidebar */}
-      <div className="w-64 bg-white p-4 border-r border-gray-200">
-        <h2 className="text-lg font-semibold mb-4">Filtros</h2>
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div>
-            <label
-              htmlFor="type"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Tipo
-            </label>
-            <select
-              id="type"
-              name="type"
-              value={filters.type}
-              onChange={handleFilterChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-            >
-              <option value="">Todos</option>
-              <option value="page">Laudo</option>
-              <option value="training">Treinamento</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="startDate"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Data Inicial
-            </label>
-            <input
-              id="startDate"
-              type="date"
-              name="startDate"
-              value={filters.startDate}
-              onChange={handleFilterChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="endDate"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Data Final
-            </label>
-            <input
-              id="endDate"
-              type="date"
-              name="endDate"
-              value={filters.endDate}
-              onChange={handleFilterChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="client"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Cliente
-            </label>
-            <input
-              id="client"
-              type="text"
-              name="client"
-              value={filters.client}
-              onChange={handleFilterChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              placeholder="Digite o nome do cliente"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="orderNumber"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Número da O.S
-            </label>
-            <input
-              id="orderNumber"
-              type="text"
-              name="orderNumber"
-              value={filters.orderNumber}
-              onChange={handleFilterChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-              placeholder="Digite o número da ordem de serviço"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600"
-          >
-            Buscar
-          </button>
-        </form>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 p-6 space-y-8">
         {/* 1) SEÇÃO "STATUS DE O.S" => soma (page + training) */}
@@ -290,11 +167,11 @@ export default function Dashboard({
             />
 
             <StatusCard
-              count={countsOs["contacting_client"] ?? 0}
+              count={osAtrasados(ordersProp)}
               label={"EM ATRASO"}
               className="bg-red-700 text-white"
-              type="os"
-              status="contacting_client"
+              type="late"
+              status=""
               onClick={onSelectStatus}
             />
             <StatusCard

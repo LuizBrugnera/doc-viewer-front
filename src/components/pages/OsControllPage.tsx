@@ -4,6 +4,8 @@ import { ServiceOrdersPage } from "../ServiceOrdersPage";
 import { ServiceList } from "../ServiceList";
 import { OsService } from "@/services/OsService";
 import useAuth from "@/security/UseAuth";
+import { ServiceDataService } from "@/services/ServiceDataService";
+import { useNavigate } from "react-router-dom";
 
 interface Filters {
   type: "page" | "training" | "os";
@@ -14,6 +16,15 @@ interface Filters {
   orderNumber: string;
   store: string; // NOVO
   seller: string; // NOVO
+}
+
+interface ServiceDataService {
+  id: number;
+  cod: string;
+  name: string;
+  sellValue: string;
+  description: string;
+  duration: string | null;
 }
 
 // Interface para o novo formato
@@ -40,9 +51,12 @@ interface ServiceOrder {
 
 export default function OsControllPage() {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState<
     "dashboard" | "serviceOrders" | "services"
   >("dashboard");
+
+  const [services, setServices] = useState<ServiceDataService[]>([]);
 
   // Estado global de filtros
   const [externalFilters, setExternalFilters] = useState<Filters>({
@@ -68,6 +82,15 @@ export default function OsControllPage() {
     console.log("orders", orders);
   }, [token]);
 
+  useEffect(() => {
+    const fetchServices = async () => {
+      const data = await ServiceDataService.findAllServiceData(token!);
+      setServices(data);
+    };
+
+    fetchServices();
+  }, [token]);
+
   /**
    * Quando o usuário clica em algum card no Dashboard,
    * chamamos onSelectStatus(type, status). Aqui definimos
@@ -84,7 +107,7 @@ export default function OsControllPage() {
 
   return (
     <div>
-      <nav className="bg-gray-800 text-white p-4">
+      <nav className="bg-gray-800 text-white p-4 flex justify-between">
         <ul className="flex space-x-4">
           <li>
             <button
@@ -111,13 +134,22 @@ export default function OsControllPage() {
             </button>
           </li>
         </ul>
+        <button onClick={() => navigate("/login")}>Sair</button>
       </nav>
 
       {currentPage === "dashboard" && (
-        <Dashboard onSelectStatus={handleSelectStatus} ordersProp={orders} />
+        <Dashboard
+          onSelectStatus={handleSelectStatus}
+          ordersProp={orders}
+          servicesProp={services}
+        />
       )}
       {currentPage === "serviceOrders" && (
-        <ServiceOrdersPage filtersProp={externalFilters} ordersProp={orders} />
+        <ServiceOrdersPage
+          filtersProp={externalFilters}
+          ordersProp={orders}
+          servicesProp={services}
+        />
       )}
       {currentPage === "services" && <ServiceList />}
     </div>

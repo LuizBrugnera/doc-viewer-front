@@ -29,7 +29,7 @@ type DepartmentDialogProps = {
   };
   onChange: (field: string, value: any, field2?: string, value2?: any) => void;
   availableFolders: { [key: string]: string };
-  isEditMode: boolean; 
+  isEditMode: boolean;
 };
 
 export default function DepartmentDialog({
@@ -115,6 +115,7 @@ export default function DepartmentDialog({
                 <option value="esocial">E-social</option>
                 <option value="vendas">Vendas</option>
                 <option value="exames">Exames</option>
+                <option value="os">Ordem de Serviço</option>
               </select>
             </div>
             <div className="space-y-2">
@@ -177,9 +178,7 @@ export default function DepartmentDialog({
           </div>
           <DialogFooter className="mt-4">
             <Button type="submit">
-              {isEditMode
-                ? "Atualizar Departamento"
-                : "Adicionar Departamento"}
+              {isEditMode ? "Atualizar Departamento" : "Adicionar Departamento"}
             </Button>
           </DialogFooter>
         </form>

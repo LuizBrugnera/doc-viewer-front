@@ -46,6 +46,9 @@ const Navbar: React.FC = () => {
                 <AvatarImage src="/placeholder-user.jpg" alt="Cliente" />
                 <AvatarFallback>CN</AvatarFallback>
               </Avatar>
+              <div>
+                <Button onClick={() => navigate("/login")}>Sair</Button>
+              </div>
             </div>
           </div>
         </header>

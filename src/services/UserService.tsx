@@ -46,6 +46,15 @@ export const UserService = {
     });
   },
 
+  async findUserByCod(token: string, cod: string): Promise<{ id: number }> {
+    const result = await axios.get(`${API_URL}/cod/${cod}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return result.data;
+  },
+
   async updateUserByAdminClient(
     token: string,
     userData: UserInfo

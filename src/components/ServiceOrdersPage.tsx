@@ -2,20 +2,33 @@ import { ChangeEvent, FormEvent, useEffect, useState } from "react";
 import { SearchIcon } from "lucide-react";
 import { OsService } from "@/services/OsService";
 import useAuth from "@/security/UseAuth";
+import { UserService } from "@/services/UserService";
+import { DocumentService } from "@/services/DocumentService";
 
 // Mantém a interface para o Filtro
 interface Filters {
   type: "page" | "training" | "os";
-  status: string; // "pending", "scheduled", ...
+  status: string;
   startDate: string;
   endDate: string;
   client: string;
   orderNumber: string;
-  store: string; // NOVO
-  seller: string; // NOVO
+  store: string;
+  seller: string;
+  serviceName: string; // NOVO
 }
 
-// Interface do formato dos dados (ServiceOrder)
+// Interface para cada serviço associado à ordem
+interface ServiceDataService {
+  id: number;
+  cod: string;
+  name: string;
+  sellValue: string;
+  description: string;
+  duration: string | null;
+}
+
+// Interface do formato das ordens
 interface Order {
   id: number;
   cod: string;
@@ -34,11 +47,16 @@ interface Order {
   created_at: string;
   updated_at: string;
   type: "page" | "training" | "os";
+  services: ServiceDataService[];
+  local?: string;
+  scheduledDate?: string;
+  documentId?: string;
 }
 
 interface ServiceOrdersPageProps {
   filtersProp: Filters;
   ordersProp: Order[];
+  servicesProp: ServiceDataService[];
 }
 
 // Mapeamento: Valor interno (status) -> Texto exibido
@@ -62,20 +80,42 @@ const typeCodeToView: Record<string, string> = {
 export function ServiceOrdersPage({
   filtersProp,
   ordersProp,
+  servicesProp,
 }: ServiceOrdersPageProps) {
   const { token } = useAuth();
 
-  // Armazena os filtros iniciais que vieram por props
+  // Armazena os filtros iniciais
   const [filters, setFilters] = useState<Filters>(filtersProp);
 
   // Armazena as ordens já filtradas para exibir na tabela
   const [orders, setOrders] = useState<Order[]>(ordersProp);
 
-  // -- Modais e edição/visualização
   // Modal de edição
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [newStatus, setNewStatus] = useState("");
-  const [newType, setNewType] = useState("" as "page" | "training" | "os");
+  const [newType, setNewType] = useState<"page" | "training" | "os">("page");
+  const [atrasados, setAtrasados] = useState(
+    ordersProp.filter((o) => {
+      const entryTime = new Date(o.entryDate).getTime();
+      const now = Date.now();
+
+      return servicesProp.some((service) => {
+        if (o.services[0].name !== service.name || !service.duration)
+          return false;
+
+        const prazo = entryTime + Number(service.duration) * 86400000;
+        return now > prazo && o.status !== "scheduled";
+      });
+    })
+  );
+  const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleLocation, setScheduleLocation] = useState("");
+  const [scheduleClientConfirmed, setScheduleClientConfirmed] = useState(false);
+
+  const [isAttachmentModalVisible, setIsAttachmentModalVisible] =
+    useState(false);
+  const [newDocumentFile, setNewDocumentFile] = useState<File | null>(null);
 
   // Modal de visualização
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -85,14 +125,14 @@ export function ServiceOrdersPage({
     setFilters(filtersProp);
   }, [filtersProp]);
 
-  // Sempre que "filters" mudar, refaz a busca
+  // Recalcula busca ao mudar "filters"
   useEffect(() => {
     handleSearch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
+  // Montagem inicial
   useEffect(() => {
-    //espera 0.3 seg e atualiza os dados na montagem inicial
     setTimeout(() => {
       handleSearch();
     }, 300);
@@ -104,35 +144,48 @@ export function ServiceOrdersPage({
     setOrders(ordersProp);
   }, [ordersProp]);
 
-  //envia para outra aba
-  const handleOpenDocument = (hash: string) => {
-    window.open(`https://gestaoclick.com/os/${hash}`, "_blank");
-  };
-
-  // Atualiza estado dos filtros conforme o usuário digita / seleciona
+  // Atualiza state de filtros conforme o usuário digita
   const handleFilterChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     setFilters((old) => ({ ...old, [e.target.name]: e.target.value }));
   };
 
-  // Filtragem local usando "filters" (o state local)
+  // Filtragem local
   const handleSearch = (e?: FormEvent) => {
     if (e) e.preventDefault();
 
     let filteredData = [...ordersProp];
 
-    // 1) Filtro por type
-    if (filters.type && filters.type !== "os") {
-      filteredData = filteredData.filter((o) => o.type === filters.type);
-    }
+    if (filters.type === "late") {
+      filteredData = filteredData.filter((o) => {
+        const entryTime = new Date(o.entryDate).getTime();
+        const now = Date.now();
 
-    // 2) Filtro por status
+        return servicesProp.some((service) => {
+          if (o.services[0].name !== service.name || !service.duration)
+            return false;
+
+          const prazo = entryTime + Number(service.duration) * 86400000;
+          return now > prazo && o.status !== "scheduled";
+        });
+      });
+    }
+    // Filtro por type
+    if (filters.type && filters.type !== "os" && filters.type !== "late") {
+      filteredData = filteredData.filter((o) => o.type === filters.type);
+    } else if (filters.type === "os") {
+      // "os" significa "page" OU "training"
+      filteredData = filteredData.filter(
+        (o) => o.type === "page" || o.type === "training"
+      );
+    }
+    // Filtro por status
     if (filters.status) {
       filteredData = filteredData.filter((o) => o.status === filters.status);
     }
 
-    // 3) Filtro por data inicial
+    // Filtro por data inicial
     if (filters.startDate) {
       const start = new Date(filters.startDate).getTime();
       filteredData = filteredData.filter(
@@ -140,7 +193,7 @@ export function ServiceOrdersPage({
       );
     }
 
-    // 4) Filtro por data final
+    // Filtro por data final
     if (filters.endDate) {
       const end = new Date(filters.endDate).getTime();
       filteredData = filteredData.filter(
@@ -148,7 +201,7 @@ export function ServiceOrdersPage({
       );
     }
 
-    // 5) Filtro por cliente (nome ou ID)
+    // Filtro por cliente (nome ou ID)
     if (filters.client) {
       filteredData = filteredData.filter(
         (o) =>
@@ -157,14 +210,14 @@ export function ServiceOrdersPage({
       );
     }
 
-    // 6) Filtro por número da O.S
+    // Filtro por número da O.S
     if (filters.orderNumber) {
       filteredData = filteredData.filter(
         (o) => o.id === Number(filters.orderNumber)
       );
     }
 
-    // 7) Filtro por LOJA
+    // Filtro por LOJA
     if (filters.store) {
       filteredData = filteredData.filter(
         (o) =>
@@ -173,7 +226,7 @@ export function ServiceOrdersPage({
       );
     }
 
-    // 8) Filtro por VENDEDOR
+    // Filtro por VENDEDOR
     if (filters.seller) {
       filteredData = filteredData.filter(
         (o) =>
@@ -182,44 +235,16 @@ export function ServiceOrdersPage({
       );
     }
 
+    // NOVO: Filtro por nome do serviço
+    if (filters.serviceName) {
+      filteredData = filteredData.filter((o) =>
+        o.services?.some((srv) =>
+          srv.name.toLowerCase().includes(filters.serviceName.toLowerCase())
+        )
+      );
+    }
+
     setOrders(filteredData);
-  };
-
-  // Clique para EDITAR (abrir modal)
-  const handleEditClick = (order: Order) => {
-    setEditingOrder(order);
-
-    // carrega status e type atuais
-    setNewStatus(order.status);
-    setNewType(order.type);
-  };
-
-  // Salva o novo status e type no array local (chamando API)
-  const handleSaveChanges = () => {
-    if (!editingOrder) return;
-
-    const updatedOrders = orders.map((o) => {
-      if (o.id === editingOrder.id) {
-        // Chamada de serviço para atualizar
-        OsService.updateOs(token!, {
-          ...o,
-          status: newStatus,
-          type: newType,
-        });
-
-        // Retorna o objeto atualizado
-        return { ...o, status: newStatus, type: newType };
-      }
-      return o;
-    });
-
-    setOrders(updatedOrders);
-    setEditingOrder(null);
-  };
-
-  // Fecha modal de edição sem salvar
-  const handleCloseEditModal = () => {
-    setEditingOrder(null);
   };
 
   // Clique para VISUALIZAR (abrir modal)
@@ -232,6 +257,190 @@ export function ServiceOrdersPage({
     setViewingOrder(null);
   };
 
+  // Clique para EDITAR (abrir modal)
+  const handleEditClick = (order: Order) => {
+    setEditingOrder(order);
+    setNewStatus(order.status);
+    setNewType(order.type);
+  };
+
+  // Fecha modal de edição
+  const handleCloseEditModal = () => {
+    setEditingOrder(null);
+  };
+
+  // Salva as mudanças (status/type)
+  const handleSaveChanges = () => {
+    if (!editingOrder) return;
+
+    // Se for "scheduled", abrimos o modal de agendamento
+
+    if (newStatus === "done_delivered") {
+      // Abre modal de anexo
+      setIsAttachmentModalVisible(true);
+      return;
+    }
+
+    if (newStatus === "scheduled") {
+      // Limpamos campos do agendamento (ou preenche com defaults)
+      setScheduleDate("");
+      setScheduleLocation("");
+      setScheduleClientConfirmed(false);
+
+      // Abrimos o modal de agendamento
+      setScheduleModalVisible(true);
+      return;
+    }
+
+    // Caso contrário, salva normal
+    doUpdateOs(editingOrder, newStatus, newType);
+  };
+
+  // Modal de anexo
+  const handleCloseAttachmentModal = () => {
+    setIsAttachmentModalVisible(false);
+    setNewDocumentFile(null);
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    setNewDocumentFile(e.target.files[0]);
+  };
+
+  const handleAttachFile = async (cod: string) => {
+    if (!newDocumentFile) {
+      alert("Selecione um arquivo antes de concluir!");
+      return;
+    }
+
+    const newDocumentId = await handleAddDocument(cod);
+
+    editingOrder!.documentId = newDocumentId;
+
+    doUpdateOs(editingOrder!, "done_delivered", newType);
+
+    handleCloseAttachmentModal();
+    handleCloseEditModal();
+  };
+
+  function doUpdateOs(
+    order: Order,
+    status: string,
+    type: "page" | "training" | "os"
+  ) {
+    const updatedOrders = orders.map((o) => {
+      if (o.id === order.id) {
+        OsService.updateOs(token!, { ...o, status, type });
+        return { ...o, status, type };
+      }
+      return o;
+    });
+    setOrders(updatedOrders);
+  }
+
+  const handleSaveSchedule = () => {
+    console.log(editingOrder);
+    if (!editingOrder) {
+      // Em tese, deve estar guardado de antes
+      console.log("saiu");
+      return setScheduleModalVisible(false);
+    }
+    // FAZ alguma lógica extra:
+    // - Salvar data, local e confirm no backend (seu endpoint),
+    //   ou armazenar na OS, ou outro local
+    // Exemplo fictício:
+    console.log(
+      "Agendamento:",
+      scheduleDate,
+      scheduleLocation,
+      scheduleClientConfirmed
+    );
+
+    editingOrder.scheduledDate = scheduleDate;
+    editingOrder.local = scheduleLocation;
+
+    // 1) Atualiza a OS com status = "scheduled"
+    doUpdateOs(editingOrder, "scheduled", newType);
+
+    // 2) Fecha o modal de agendamento
+    setScheduleModalVisible(false);
+  };
+
+  // Fecha modal de agendamento sem salvar
+  const handleCloseScheduleModal = () => {
+    setScheduleModalVisible(false);
+  };
+
+  const handleDownload = async (id: number, fileName: string, cod: string) => {
+    try {
+      if (!token) {
+        alert("Usuário não autenticado.");
+        return;
+      }
+
+      const user = await UserService.findUserByCod(token!, cod);
+
+      console.log(user);
+      console.log(cod);
+      console.log(id);
+      console.log(fileName);
+      console.log(token);
+
+      const response = await DocumentService.downloadFile(token, id, user.id);
+      const contentType =
+        response.headers["content-type"] || "application/octet-stream";
+
+      const url = window.URL.createObjectURL(
+        new Blob([response.data], { type: contentType })
+      );
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${fileName}`);
+      document.body.appendChild(link);
+      link.click();
+
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Erro ao fazer download do arquivo:", error);
+      alert("Erro ao fazer download do arquivo.");
+    }
+  };
+
+  const handleAddDocument = async (cod: string) => {
+    const user = await UserService.findUserByCod(token!, cod);
+
+    if (!newDocumentFile) {
+      alert("Por favor, preencha todos os campos e selecione um cliente.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("document", newDocumentFile);
+    formData.append("name", "Ordem de Serviço");
+    formData.append("folder", "ordensServico");
+    formData.append("description", `Arquivo Ordem de Serviço`);
+
+    try {
+      if (!token || !user) {
+        alert("Token ou cliente não encontrado");
+        return;
+      }
+
+      const documentId = await DocumentService.uploadFile2(
+        token,
+        user.id,
+        formData
+      );
+      setNewDocumentFile(null);
+      return documentId;
+    } catch (error) {
+      console.error("Erro ao fazer upload do arquivo:", error);
+      alert("Erro ao fazer upload do arquivo.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white flex">
       {/* Sidebar com filtros */}
@@ -239,6 +448,7 @@ export function ServiceOrdersPage({
         <h2 className="text-lg font-semibold mb-4">Filtros</h2>
         <form onSubmit={handleSearch}>
           <div className="space-y-4">
+            {/* TYPE */}
             <div>
               <label
                 htmlFor="type"
@@ -252,14 +462,16 @@ export function ServiceOrdersPage({
                 value={filters.type}
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                title="Selecione o tipo (Laudo ou Treinamento)"
               >
                 <option value="">Todos</option>
+                <option value="os">O.S (Laudos + Treinamentos)</option>
                 <option value="page">Laudo</option>
                 <option value="training">Treinamento</option>
+                <option value="late">Atrasados</option>
               </select>
             </div>
 
+            {/* STATUS */}
             <div>
               <label
                 htmlFor="status"
@@ -273,7 +485,6 @@ export function ServiceOrdersPage({
                 value={filters.status}
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                title="Selecione o status"
               >
                 <option value="">Todos</option>
                 <option value="pending">PENDENTE</option>
@@ -289,6 +500,7 @@ export function ServiceOrdersPage({
               </select>
             </div>
 
+            {/* DATA INICIAL */}
             <div>
               <label
                 htmlFor="startDate"
@@ -303,10 +515,10 @@ export function ServiceOrdersPage({
                 value={filters.startDate}
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                title="Selecione a data inicial"
               />
             </div>
 
+            {/* DATA FINAL */}
             <div>
               <label
                 htmlFor="endDate"
@@ -321,10 +533,10 @@ export function ServiceOrdersPage({
                 value={filters.endDate}
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                title="Selecione a data final"
               />
             </div>
 
+            {/* CLIENTE */}
             <div>
               <label
                 htmlFor="client"
@@ -339,11 +551,11 @@ export function ServiceOrdersPage({
                 value={filters.client}
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                placeholder="Digite o nome do cliente"
-                title="Informe o nome do cliente"
+                placeholder="Nome ou ID do cliente"
               />
             </div>
 
+            {/* ORDER NUMBER */}
             <div>
               <label
                 htmlFor="orderNumber"
@@ -358,12 +570,11 @@ export function ServiceOrdersPage({
                 value={filters.orderNumber}
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                placeholder="Digite o número da ordem de serviço"
-                title="Informe o número da O.S"
+                placeholder="ID da OS"
               />
             </div>
 
-            {/* NOVO: Filtro por loja */}
+            {/* LOJA */}
             <div>
               <label
                 htmlFor="store"
@@ -379,11 +590,10 @@ export function ServiceOrdersPage({
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 placeholder="Nome da loja"
-                title="Informe a loja"
               />
             </div>
 
-            {/* NOVO: Filtro por Vendedor */}
+            {/* VENDEDOR */}
             <div>
               <label
                 htmlFor="seller"
@@ -399,7 +609,25 @@ export function ServiceOrdersPage({
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 placeholder="Nome do vendedor"
-                title="Informe o nome do vendedor"
+              />
+            </div>
+
+            {/* NOVO: NOME DO SERVIÇO */}
+            <div>
+              <label
+                htmlFor="serviceName"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Serviço
+              </label>
+              <input
+                id="serviceName"
+                type="text"
+                name="serviceName"
+                value={filters.serviceName}
+                onChange={handleFilterChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                placeholder="Nome do serviço"
               />
             </div>
 
@@ -449,7 +677,19 @@ export function ServiceOrdersPage({
             </thead>
             <tbody>
               {orders.map((order) => (
-                <tr key={order.id}>
+                <tr
+                  key={order.id}
+                  className={
+                    `${
+                      atrasados.some((a) => a.id === order.id)
+                        ? "bg-yellow-100"
+                        : ""
+                    }` +
+                    ` ${
+                      order.status === "done_delivered" ? "bg-green-100" : ""
+                    }`
+                  }
+                >
                   <td className="py-2 px-4 border">{order.id}</td>
                   <td className="py-2 px-4 border">
                     <div>
@@ -475,7 +715,13 @@ export function ServiceOrdersPage({
                   </td>
 
                   <td className="py-2 px-4 border">{order.storeName}</td>
-                  <td className="py-2 px-4 border">{order.services[0].name}</td>
+                  {/* Exemplo exibindo apenas o primeiro serviço ou todos */}
+                  <td className="py-2 px-4 border">
+                    {order.services && order.services.length > 0
+                      ? order.services.map((srv) => srv.name).join(", ")
+                      : "N/A"}
+                  </td>
+
                   <td className="py-2 px-4 border">
                     <div className="flex gap-1">
                       {/* BOTÃO LUPA: visualizar detalhes */}
@@ -497,13 +743,33 @@ export function ServiceOrdersPage({
                         </span>
                       </button>
                       <button
-                        className="p-1 bg-yellow-500 text-white rounded hover:bg-orange-600"
-                        onClick={() => handleOpenDocument(order.hash)}
+                        className="p-1 bg-yellow-500 text-white rounded hover:bg-orange-400"
+                        onClick={() => {
+                          window.open(
+                            `https://gestaoclick.com/os/${order.hash}`
+                          );
+                        }}
                       >
-                        <span role="img" aria-label="Editar OS">
+                        <span role="img" aria-label="Ver arquivo">
                           📁
                         </span>
                       </button>
+                      {order.documentId && (
+                        <button
+                          className="p-1 bg-green-400 text-white rounded hover:bg-green-600"
+                          onClick={() =>
+                            handleDownload(
+                              +order.documentId!,
+                              "OS - PRONTO " + order.clientName,
+                              order.clientId!
+                            )
+                          }
+                        >
+                          <span role="img" aria-label="Ver arquivo">
+                            📁
+                          </span>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -576,16 +842,134 @@ export function ServiceOrdersPage({
             {/* BOTÕES SALVAR E CANCELAR */}
             <div className="flex justify-end gap-2">
               <button
+                type="button"
                 className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
                 onClick={handleCloseEditModal}
               >
                 Cancelar
               </button>
               <button
+                type="button"
                 className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
                 onClick={handleSaveChanges}
               >
                 Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {scheduleModalVisible && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded shadow-md w-96">
+            <h2 className="text-xl font-bold mb-4">Agendar O.S</h2>
+
+            {/* Data do agendamento */}
+            <div className="mb-4">
+              <label
+                htmlFor="scheduleDate"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Data do Agendamento
+              </label>
+              <input
+                id="scheduleDate"
+                type="date"
+                className="w-full border border-gray-300 rounded-md p-2"
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+              />
+            </div>
+
+            {/* Local do agendamento */}
+            <div className="mb-4">
+              <label
+                htmlFor="scheduleLocation"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Local
+              </label>
+              <input
+                id="scheduleLocation"
+                type="text"
+                className="w-full border border-gray-300 rounded-md p-2"
+                value={scheduleLocation}
+                onChange={(e) => setScheduleLocation(e.target.value)}
+                placeholder="Local do agendamento"
+              />
+            </div>
+
+            {/* Confirmação de cliente */}
+            <div className="mb-4 flex items-center">
+              <input
+                id="scheduleClientConfirmed"
+                type="checkbox"
+                className="mr-2"
+                checked={scheduleClientConfirmed}
+                onChange={(e) => setScheduleClientConfirmed(e.target.checked)}
+              />
+              <label
+                htmlFor="scheduleClientConfirmed"
+                className="text-sm text-gray-700"
+              >
+                Cliente Confirmado?
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
+                onClick={handleCloseScheduleModal}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                onClick={handleSaveSchedule}
+              >
+                Salvar Agendamento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAttachmentModalVisible && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded shadow-md w-96">
+            <h2 className="text-xl font-bold mb-4">Anexar Arquivo</h2>
+            <div className="mb-4 space-y-2">
+              <label
+                htmlFor="attachment"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Selecione um arquivo
+              </label>
+              <input
+                id="attachment"
+                type="file"
+                onChange={handleFileChange}
+                className="border border-gray-300 rounded p-2 w-full"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
+                onClick={handleCloseAttachmentModal}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                onClick={() => handleAttachFile(editingOrder?.clientId!)}
+              >
+                Concluir
               </button>
             </div>
           </div>
@@ -643,7 +1027,27 @@ export function ServiceOrdersPage({
                 <strong>Situação:</strong> {viewingOrder.situationName ?? "N/A"}
               </div>
               <div>
+                <strong>Local:</strong> {viewingOrder.local ?? "N/A"}
+              </div>
+              <div>
+                <strong>Data de Agendamento:</strong>{" "}
+                {viewingOrder.scheduledDate
+                  ? new Date(viewingOrder.scheduledDate).toLocaleDateString(
+                      "pt-BR"
+                    )
+                  : "N/A"}
+              </div>
+              <div>
+                <strong>DocumentId:</strong> {viewingOrder.documentId ?? "N/A"}
+              </div>
+              <div>
                 <strong>Loja:</strong> {viewingOrder.storeName ?? "N/A"}
+              </div>
+              <div>
+                <strong>Serviços:</strong>{" "}
+                {viewingOrder.services && viewingOrder.services.length > 0
+                  ? viewingOrder.services.map((srv) => srv.name).join(", ")
+                  : "N/A"}
               </div>
               <div>
                 <strong>Criado em:</strong>{" "}
@@ -661,6 +1065,7 @@ export function ServiceOrdersPage({
 
             <div className="mt-4 flex justify-end">
               <button
+                type="button"
                 className="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400"
                 onClick={handleCloseViewModal}
               >

@@ -19,6 +19,21 @@ export const DocumentService = {
     ).data as DocumentMetaData;
   },
 
+  async uploadFile2(
+    token: string,
+    userId: number,
+    formData: FormData
+  ): Promise<string> {
+    return (
+      await axios.post(`${API_URL}/upload/file/${userId}`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      })
+    ).data.documentId as string;
+  },
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async uploadFileFast(token: string, formData: FormData): Promise<any> {
     return await axios.post(`${API_URL}/upload/auto-assign`, formData, {
