@@ -380,12 +380,6 @@ export function ServiceOrdersPage({
 
       const user = await UserService.findUserByCod(token!, cod);
 
-      console.log(user);
-      console.log(cod);
-      console.log(id);
-      console.log(fileName);
-      console.log(token);
-
       const response = await DocumentService.downloadFile(token, id, user.id);
       const contentType =
         response.headers["content-type"] || "application/octet-stream";
@@ -900,8 +894,8 @@ export function ServiceOrdersPage({
               />
             </div>
 
-            {/* Confirmação de cliente */}
-            <div className="mb-4 flex items-center">
+            {/* Confirmação de cliente */
+            /*  <div className="mb-4 flex items-center">
               <input
                 id="scheduleClientConfirmed"
                 type="checkbox"
@@ -915,7 +909,7 @@ export function ServiceOrdersPage({
               >
                 Cliente Confirmado?
               </label>
-            </div>
+            </div>*/}
 
             <div className="flex justify-end gap-2">
               <button
