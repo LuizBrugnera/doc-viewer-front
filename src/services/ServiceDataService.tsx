@@ -9,6 +9,7 @@ interface ServiceDataUpdate {
   sellValue: string;
   description: string;
   duration: string | null;
+  type: string;
 }
 
 interface ServiceData {
@@ -18,6 +19,7 @@ interface ServiceData {
   sellValue: string;
   description: string;
   duration: string | null;
+  type: string;
 }
 
 export const ServiceDataService = {

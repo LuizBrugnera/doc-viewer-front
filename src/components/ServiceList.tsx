@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { ServiceDataService } from "@/services/ServiceDataService";
 import useAuth from "@/security/UseAuth";
+import { OsService } from "@/services/OsService";
 
 interface Service {
   id: number;
@@ -21,6 +22,7 @@ interface Service {
   sellValue: string;
   description: string;
   duration: string | null;
+  type: string;
 }
 
 export function ServiceList() {
@@ -30,7 +32,7 @@ export function ServiceList() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isDetailsVisible, setIsDetailsVisible] = useState<boolean>(false);
   const [isEditVisible, setIsEditVisible] = useState<boolean>(false);
-
+  const [isWarningModalOpen, setIsWarningModalOpen] = useState(false);
   useEffect(() => {
     const fetchServices = async () => {
       const data = await ServiceDataService.findAllServiceData(token!);
@@ -68,7 +70,8 @@ export function ServiceList() {
         name: selectedService.name,
         sellValue: selectedService.sellValue,
         description: selectedService.description,
-        duration: selectedService.duration, // <-- Incluímos a "duration"
+        duration: selectedService.duration,
+        type: selectedService.type,
       });
 
       const updatedServices = await ServiceDataService.findAllServiceData(
@@ -85,11 +88,40 @@ export function ServiceList() {
       service.cod.includes(searchTerm)
   );
 
+  const translateType = (type: string) => {
+    if (type === "page") {
+      return "Laudo";
+    } else if (type === "training") {
+      return "Treinamento";
+    }
+  };
+
+  const updateOsWithServices = async () => {
+    await OsService.updateOsWithServices(token!);
+    window.location.reload();
+  };
+
+  // 1) Ao clicar em "Atualizar", abrimos o modal de aviso
+  const handleOpenWarningModal = () => {
+    setIsWarningModalOpen(true);
+  };
+
+  // 2) Se o usuário confirmar, chamamos a atualização real
+  const confirmUpdateServices = async () => {
+    setIsWarningModalOpen(false); // fecha o modal
+    await updateOsWithServices(); // chama a atualização
+  };
+
+  // 3) Se o usuário desistir, apenas fecha o modal
+  const cancelUpdateServices = () => {
+    setIsWarningModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-white p-8">
       <h1 className="text-2xl font-bold mb-6">Lista de Serviços</h1>
 
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <Input
           type="text"
           placeholder="Buscar por nome ou código"
@@ -97,6 +129,12 @@ export function ServiceList() {
           onChange={handleSearch}
           className="max-w-md"
         />
+        <Button
+          onClick={handleOpenWarningModal}
+          className="bg-blue-500 text-white"
+        >
+          Atualizar
+        </Button>
       </div>
 
       <Table>
@@ -106,6 +144,7 @@ export function ServiceList() {
             <TableHead>Nome</TableHead>
             <TableHead>Valor de Venda</TableHead>
             <TableHead>Duração</TableHead>
+            <TableHead>Tipo</TableHead>
             <TableHead>Descrição</TableHead>
             <TableHead>Ações</TableHead>
           </TableRow>
@@ -119,6 +158,7 @@ export function ServiceList() {
                 R$ {service.sellValue}
               </TableCell>
               <TableCell>{service.duration || "N/A"}</TableCell>
+              <TableCell>{translateType(service.type)}</TableCell>
               <TableCell>{service.description}</TableCell>
               <TableCell>
                 <Button
@@ -189,6 +229,7 @@ export function ServiceList() {
                   className="mt-1"
                 />
               </label>
+
               <label className="block mb-2">
                 Valor de Venda:
                 <Input
@@ -204,7 +245,6 @@ export function ServiceList() {
                 />
               </label>
 
-              {/* NOVO CAMPO: Duração */}
               <label className="block mb-2">
                 Duração:
                 <Input
@@ -218,6 +258,24 @@ export function ServiceList() {
                   }
                   className="mt-1"
                 />
+              </label>
+
+              {/* NOVO CAMPO: Tipo */}
+              <label className="block mb-2">
+                Tipo:
+                <select
+                  value={selectedService.type}
+                  onChange={(e) =>
+                    setSelectedService({
+                      ...selectedService,
+                      type: e.target.value,
+                    })
+                  }
+                  className="mt-1 border border-gray-300 rounded p-2 w-full"
+                >
+                  <option value="page">Laudo (page)</option>
+                  <option value="training">Treinamento (training)</option>
+                </select>
               </label>
 
               <label className="block mb-2">
@@ -234,6 +292,7 @@ export function ServiceList() {
                   className="mt-1"
                 />
               </label>
+
               <div className="flex justify-end mt-4">
                 <Button type="button" onClick={handleClose} className="mr-2">
                   Cancelar
@@ -244,6 +303,28 @@ export function ServiceList() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Modal de Aviso - Confirmar Update */}
+      {isWarningModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded shadow max-w-md w-full">
+            <h2 className="text-xl font-bold">Atualização Pesada</h2>
+            <p className="mt-4">
+              Este processo pode exigir bastante processamento do servidor.
+              Deseja realmente continuar?
+            </p>
+            <div className="flex justify-end mt-6">
+              <Button
+                variant="outline"
+                className="mr-2"
+                onClick={cancelUpdateServices}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={confirmUpdateServices}>Prosseguir</Button>
+            </div>
           </div>
         </div>
       )}

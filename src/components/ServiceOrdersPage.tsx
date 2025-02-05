@@ -4,6 +4,7 @@ import { OsService } from "@/services/OsService";
 import useAuth from "@/security/UseAuth";
 import { UserService } from "@/services/UserService";
 import { DocumentService } from "@/services/DocumentService";
+import { Button } from "./ui/button";
 
 // Mantém a interface para o Filtro
 interface Filters {
@@ -120,6 +121,8 @@ export function ServiceOrdersPage({
   // Modal de visualização
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
 
+  const [loadDisplayedOrders, setLoadDisplayedOrders] = useState(150);
+
   // Sincroniza filtersProp -> filters local
   useEffect(() => {
     setFilters(filtersProp);
@@ -150,6 +153,22 @@ export function ServiceOrdersPage({
   ) => {
     setFilters((old) => ({ ...old, [e.target.name]: e.target.value }));
   };
+
+  const distinctStores = Array.from(
+    new Set(
+      ordersProp
+        .map((o) => o.storeName)
+        .filter((storeName) => storeName && storeName.trim() !== "")
+    )
+  );
+
+  const distinctSellers = Array.from(
+    new Set(
+      ordersProp
+        .map((o) => o.sellerName)
+        .filter((sellerName) => sellerName && sellerName.trim() !== "")
+    )
+  );
 
   // Filtragem local
   const handleSearch = (e?: FormEvent) => {
@@ -220,13 +239,17 @@ export function ServiceOrdersPage({
     // Filtro por LOJA
     if (filters.store) {
       filteredData = filteredData.filter(
-        (o) =>
-          o.storeName &&
-          o.storeName.toLowerCase().includes(filters.store.toLowerCase())
+        (o) => o.storeName && o.storeName === filters.store
       );
     }
 
-    // Filtro por VENDEDOR
+    if (filters.seller) {
+      filteredData = filteredData.filter(
+        (o) => o.sellerName && o.sellerName === filters.seller
+      );
+    }
+
+    /* Filtro por VENDEDOR
     if (filters.seller) {
       filteredData = filteredData.filter(
         (o) =>
@@ -234,7 +257,7 @@ export function ServiceOrdersPage({
           o.sellerName.toLowerCase().includes(filters.seller.toLowerCase())
       );
     }
-
+    */
     // NOVO: Filtro por nome do serviço
     if (filters.serviceName) {
       filteredData = filteredData.filter((o) =>
@@ -576,18 +599,23 @@ export function ServiceOrdersPage({
               >
                 Loja
               </label>
-              <input
+              <select
                 id="store"
-                type="text"
                 name="store"
                 value={filters.store}
                 onChange={handleFilterChange}
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
-                placeholder="Nome da loja"
-              />
+              >
+                <option value="">Todas</option>
+                {distinctStores.map((store) => (
+                  <option key={store} value={store}>
+                    {store}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* VENDEDOR */}
+            {/* VENDEDOR 
             <div>
               <label
                 htmlFor="seller"
@@ -604,6 +632,29 @@ export function ServiceOrdersPage({
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
                 placeholder="Nome do vendedor"
               />
+            </div>
+              */}
+            <div>
+              <label
+                htmlFor="seller"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Vendedor
+              </label>
+              <select
+                id="seller"
+                name="seller"
+                value={filters.seller}
+                onChange={handleFilterChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+              >
+                <option value="">Todas</option>
+                {distinctSellers.map((seller) => (
+                  <option key={seller} value={seller}>
+                    {seller}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* NOVO: NOME DO SERVIÇO */}
@@ -670,7 +721,7 @@ export function ServiceOrdersPage({
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {orders.slice(0, loadDisplayedOrders).map((order) => (
                 <tr
                   key={order.id}
                   className={
@@ -770,9 +821,15 @@ export function ServiceOrdersPage({
               ))}
             </tbody>
           </table>
+          <Button
+            onClick={() => setLoadDisplayedOrders(loadDisplayedOrders + 150)}
+            className="mt-4"
+          >
+            Carregar Mais
+          </Button>
 
           <div className="mt-4 text-sm text-gray-500">
-            Mostrando {orders.length} de {orders.length} resultados
+            Mostrando {loadDisplayedOrders} de {orders.length} resultados
           </div>
         </div>
       </div>

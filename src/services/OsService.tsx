@@ -345,6 +345,18 @@ interface ServiceOrder {
 }
 
 export const OsService = {
+  async updateOsWithServices(token: string): Promise<void> {
+    await axios.patch(
+      `${API_URL}/update-services`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  },
+
   async findAllOs(token: string): Promise<ServiceOrder[]> {
     const response = await axios.get(`${API_URL}/`, {
       headers: {

@@ -25,6 +25,7 @@ interface ServiceDataService {
   sellValue: string;
   description: string;
   duration: string | null;
+  type: string;
 }
 
 // Interface para o novo formato
